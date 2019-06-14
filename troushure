@@ -7,11 +7,19 @@ help() {
 	echo "Usage: $SCRIPT_NAME [-a url]"
 }
 
+# Create list file if non existent.
 if [ ! -e $DB ]; then
-	touch $HOME/file
+	touch $DB
 fi
 
-case $1 in
+# If no parameter is given when executing.
+if [ $1 ]; then
+	OPTION=$1
+else
+	OPTION="-h"
+fi
+
+case $OPTION in
 	-h)
 		help
 		break
@@ -25,6 +33,6 @@ case $1 in
 		break
 		;;
 	*)
-		echo "$SCRIPT_NAME: no $1 option."
+		echo "$SCRIPT_NAME: $OPTION: no such option."
 		;;
 esac
