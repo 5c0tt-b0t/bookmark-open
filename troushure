@@ -1,10 +1,27 @@
 #!/bin/sh
 
 SCRIPT_NAME=`echo $0 | sed "s_/_\n_g" | tail -n 1`
+
+# Line number used as id for an entry. Starts from 0.
 DB=$HOME/sites
+SEPARATOR=" "
 
 help() {
 	echo "Usage: $SCRIPT_NAME [-a url]"
+}
+
+add() {
+	# Basic url validation
+	echo $1 | grep -q  -E "https?://[0-9A-Za-z]+\..+"
+	if [ $? -eq 1 ]; then
+		echo "$1: Not a url."
+		exit 1
+	fi
+
+	# Line number used as id. Starts from 0
+	ID=`wc -l $DB | cut -d " " -f 1`
+
+	echo "$ID$SEPARATOR$1" >> $DB
 }
 
 # Create list file if non existent.
@@ -29,7 +46,7 @@ case $OPTION in
 		break
 		;;
 	-a)
-		add
+		add $2
 		break
 		;;
 	*)
