@@ -1,0 +1,30 @@
+#!/bin/sh
+
+SCRIPT_NAME=`echo $0 | sed "s_/_\n_g" | tail -n 1`
+DB=$HOME/sites
+
+help() {
+	echo "Usage: $SCRIPT_NAME [-a url]"
+}
+
+if [ ! -e $DB ]; then
+	touch $HOME/file
+fi
+
+case $1 in
+	-h)
+		help
+		break
+		;;
+	--help)
+		help
+		break
+		;;
+	-a)
+		add
+		break
+		;;
+	*)
+		echo "$SCRIPT_NAME: no $1 option."
+		;;
+esac
