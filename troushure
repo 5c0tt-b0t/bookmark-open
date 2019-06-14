@@ -7,7 +7,10 @@ DB=$HOME/sites
 SEPARATOR=" "
 
 help() {
-	echo "Usage: $SCRIPT_NAME [-a url]"
+	echo "Usage: $SCRIPT_NAME [-] [-a url]"
+	echo "\t-\tRead from standard input."
+	echo "\t-a\tAdd a url."
+	exit
 }
 
 add() {
@@ -19,7 +22,7 @@ add() {
 	fi
 
 	# Line number used as id. Starts from 0
-	ID=`wc -l $DB | cut -d " " -f 1`
+	ID=`wc -l $DB | awk -F " " "{ print $ 1 }"`
 
 	echo "$ID$SEPARATOR$1" >> $DB
 }
@@ -29,27 +32,39 @@ if [ ! -e $DB ]; then
 	touch $DB
 fi
 
-# If no parameter is given when executing.
-if [ $1 ]; then
-	OPTION=$1
-else
-	OPTION="-h"
+if [ $# -eq 0 ]; then
+	help
 fi
 
-case $OPTION in
-	-h)
-		help
-		break
-		;;
-	--help)
-		help
-		break
-		;;
-	-a)
-		add $2
-		break
-		;;
-	*)
-		echo "$SCRIPT_NAME: $OPTION: no such option."
-		;;
-esac
+READ_STDIN=false
+if [ $1 = "-" ]; then
+	READ_STDIN=true
+	shift
+fi
+
+while [ -n "$(echo $1 | grep '-')" ]; do
+	case $1 in
+		-h)
+			help
+			;;
+		--help)
+			help
+			;;
+		-a)
+			if [ $2 ]; then
+				add $2
+				shift
+			elif [ "$READ_STDIN" = true ]; then
+				add $(cat /proc/${$}/fd/0)
+			else
+				echo "No url specified."
+				exit 1
+			fi
+			;;
+		*)
+			echo "$SCRIPT_NAME: $OPTION: no such option."
+			exit
+			;;
+	esac
+	shift
+done
