@@ -1,5 +1,21 @@
 #!/bin/sh
 
+# List websites and open them in one go
+#Copyright (C) 2019  Karmjit Mahil
+#
+#This program is free software; you can redistribute it and/or
+#modify it under the terms of the GNU General Public License 2
+#as published by the Free Software Foundation.
+#
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+#
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
 SCRIPT_NAME=`echo $0 | sed "s_/_\n_g" | tail -n 1`
 
 # ID of first item added is 1
@@ -24,8 +40,7 @@ add() {
 		exit 1
 	fi
 
-	grep -q "$1" $DB
-	if [ $? -eq 0 ]; then
+	if grep -q "$1" $DB; then
 		echo "$1: Already saved."
 		exit
 	fi
@@ -33,6 +48,33 @@ add() {
 	# ID of first item added is 1
 	ID=`expr $(tail -n 1 $DB | cut -d "$SEPARATOR" -f 1) + 1`
 	echo "${ID}${SEPARATOR}$1" >> $DB
+}
+
+deleteDb() {
+	echo "All url entries will be lost.\nDo you want to continue(y/n):"
+	read DEL_DB
+	if [ "$DEL_DB" != "${DEL_DB#[Yy]}" ]; then
+		rm $DB
+	fi
+}
+
+deleteUrl() {
+	# Checks if $1 is an integer.
+	if [ -z "$(echo $1 | sed 's/^[0-9][0-9]*//g')" ]; then
+		TEXT=`sed "/^${1}${SEPARATOR}/d" $DB`
+		echo "$TEXT" > $DB
+	else
+		echo "$2: Not an ID."
+		exit 1
+	fi
+}
+
+printUrls() {
+	if [ -s $DB ]; then
+		cat "$DB" | awk -F " " 'BEGIN { print "ID\tURL"} { print $1 "\t" $2}'
+	else
+		echo "No entries."
+	fi
 }
 
 # Create list file if non existent.
@@ -57,6 +99,7 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			;;
 		--help)
 			help
+			exit
 			;;
 		-a)
 			if [ $2 ]; then
@@ -71,23 +114,15 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			;;
 		-d)
 			if [ ! $2 ]; then
-				echo "This will delete the whole database.\nDo you want to continue(y/n):"
-				read DEL_DB
-				if [ "$DEL_DB" != "${DEL_DB#[Yy]}" ]; then
-					rm $DB
-				fi
+				deleteDb
 				exit
-			elif [ -z "$(echo $2 | sed 's/^[0-9][0-9]*//g')" ]; then
-				TEXT=`sed "/^${2}${SEPARATOR}/d" $DB`
-				echo "$TEXT" > $DB
-				shift
 			else
-				echo "$2: Not an ID."
-				exit 1
+				deleteUrl
+				shift
 			fi
 			;;
 		-p)
-			cat "$DB" | awk -F " " 'BEGIN { print "ID\tURL"} { print $1 "\t" $2}'
+			printUrls
 			exit
 			;;
 		*)
