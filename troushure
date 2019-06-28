@@ -2,15 +2,17 @@
 
 SCRIPT_NAME=`echo $0 | sed "s_/_\n_g" | tail -n 1`
 
-# Line number used as id for an entry. Starts from 0.
+# ID of first item added is 1
 DB=$HOME/sites
 SEPARATOR=" "
 
 help() {
-	echo "Usage: $SCRIPT_NAME [-] [-a url]"
-	echo "\t-\tRead from standard input."
-	echo "\t-a\tAdd a url."
-	echo "\t-p\tPrint urls saved."
+	echo "Usage: $SCRIPT_NAME"
+	echo "\t- 	Read from standard input."
+	echo "\t-a url	Add a url."
+	echo "\t-p 	Print urls saved."
+	echo "\t-d 	Delete all urls."
+	echo "\t-d id	Delete url with ID."
 	exit
 }
 
@@ -22,10 +24,15 @@ add() {
 		exit 1
 	fi
 
-	# Line number used as id. Starts from 0
-	ID=`wc -l $DB | awk -F " " "{ print $ 1 }"`
+	grep -q "$1" $DB
+	if [ $? -eq 0 ]; then
+		echo "$1: Already saved."
+		exit
+	fi
 
-	echo "$ID$SEPARATOR$1" >> $DB
+	# ID of first item added is 1
+	ID=`expr $(tail -n 1 $DB | cut -d "$SEPARATOR" -f 1) + 1`
+	echo "${ID}${SEPARATOR}$1" >> $DB
 }
 
 # Create list file if non existent.
@@ -59,6 +66,23 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 				add $(cat /proc/${$}/fd/0)
 			else
 				echo "No url specified."
+				exit 1
+			fi
+			;;
+		-d)
+			if [ ! $2 ]; then
+				echo "This will delete the whole database.\nDo you want to continue(y/n):"
+				read DEL_DB
+				if [ "$DEL_DB" != "${DEL_DB#[Yy]}" ]; then
+					rm $DB
+				fi
+				exit
+			elif [ -z "$(echo $2 | sed 's/^[0-9][0-9]*//g')" ]; then
+				TEXT=`sed "/^${2}${SEPARATOR}/d" $DB`
+				echo "$TEXT" > $DB
+				shift
+			else
+				echo "$2: Not an ID."
 				exit 1
 			fi
 			;;
