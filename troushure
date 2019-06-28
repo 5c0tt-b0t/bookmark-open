@@ -10,6 +10,7 @@ help() {
 	echo "Usage: $SCRIPT_NAME [-] [-a url]"
 	echo "\t-\tRead from standard input."
 	echo "\t-a\tAdd a url."
+	echo "\t-p\tPrint urls saved."
 	exit
 }
 
@@ -60,6 +61,10 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 				echo "No url specified."
 				exit 1
 			fi
+			;;
+		-p)
+			cat "$DB" | awk -F " " 'BEGIN { print "ID\tURL"} { print $1 "\t" $2}'
+			exit
 			;;
 		*)
 			echo "$SCRIPT_NAME: $OPTION: no such option."
