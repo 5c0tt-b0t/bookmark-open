@@ -21,6 +21,8 @@ readonly SCRIPT_NAME
 ECHO_HELP="Try '$SCRIPT_NAME --help' for more information."
 readonly ECHO_HELP
 
+# Config file only contains the path to db for now.
+# Config file is deleted when db is deleted, otherwise 'database not fond' error will be shown
 CFG_FILE="$HOME/.config/$SCRIPT_NAME/${SCRIPT_NAME}"
 CFG_FOLDER=`dirname $CFG_FILE`
 if [ ! -e "$CFG_FILE" ]; then
@@ -59,10 +61,11 @@ fi
 
 help() {
 	echo "Usage: $SCRIPT_NAME"
-	echo "\t- 	Read from standard input."
-	echo "\t-a url	Add a url."
-	echo "\t-d id	Delete url with ID."
-	echo "\t-p 	Print urls saved."
+	echo "\t-       Read from standard input."
+	echo "\t-a url  Add a url."
+	echo "\t-d id   Delete url with ID."
+	echo "\t-D      Delete database."
+	echo "\t-p      Print urls saved."
 	exit
 }
 
@@ -139,6 +142,19 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 				deleteUrl "$2"
 				shift
 			fi
+			;;
+		-D)
+			echo "The database will be deleted."
+			echo "Do you wish to continue (y/n): "
+			read RESPONSE
+			echo $RESPONSE | grep -q '^[yY]'
+			if [ "$?" = 1 ]; then
+				exit 0
+			fi
+
+			rm $DB
+			rm $CFG_FILE
+			echo "Database deleted."
 			;;
 		-p)
 			printUrls
