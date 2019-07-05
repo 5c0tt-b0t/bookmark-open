@@ -13,7 +13,7 @@ Fancy bookmarking system.
 * Open websites in a collection one by one, stepping through.
 
 ## Getting started
-Execute:
+You will need to copy the 'troshure' script to /usr/local/bin/ so that you can use it no matter your working directory.
 ```{BASH}
 sudo cp troshure /usr/local/bin/
 ```
