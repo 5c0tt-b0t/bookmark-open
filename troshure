@@ -16,13 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-SCRIPT_NAME=`echo $0 | sed "s_/_\n_g" | tail -n 1`
+SCRIPT_NAME=`echo $0 | sed 's_/_\n_g' | tail -n 1`
 readonly SCRIPT_NAME
 ECHO_HELP="Try '$SCRIPT_NAME --help' for more information."
 readonly ECHO_HELP
 
 CFG_LOCATION="$HOME/.config/$SCRIPT_NAME/"
-CFG_FILE=${CFG_LOCATION}${SCRIPT_NAME}
+CFG_FILE="${CFG_LOCATION}${SCRIPT_NAME}"
 if [ ! -e "$CFG_FILE" ]; then
 	if [ "$1" = "init" ]; then
 		touch "$2"
@@ -72,17 +72,19 @@ add() {
 	fi
 
 	# ID of first item added is 1
-	ID=`expr $(tail -n 1 $DB | cut -d "$SEPARATOR" -f 1) + 1`
+	ID=`expr $(tail -n 1 $DB | awk '{ print $1 }') + 1`
 	echo "${ID} $1" >> $DB
 }
 
 deleteUrl() {
 	# Checks if $1 is an integer.
-	if [ -z "$(echo $1 | sed 's/^[0-9][0-9]*//g')" ]; then
-		TEXT=`sed "/^${1}${SEPARATOR}/d" $DB`
-		echo "$TEXT" > $DB
+	echo "$1" | grep -q '^[0-9]*$'
+	if [ "$?" = 0 ]; then
+		TEXT=`sed "/^${1} ./d" $DB`
+		# -n required as /n causes problems if all urls are deleted.
+		echo -n "$TEXT" > $DB
 	else
-		echo "$2: Not an ID."
+		echo "$1: Not an ID."
 		exit 1
 	fi
 }
@@ -97,6 +99,7 @@ printUrls() {
 
 if [ $# -eq 0 ]; then
 	help
+	exit
 fi
 
 READ_STDIN=false
@@ -125,7 +128,7 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			;;
 		-d)
 			if [ $2 ]; then
-				deleteUrl
+				deleteUrl "$2"
 				shift
 			fi
 			;;

@@ -28,7 +28,6 @@ All urls will be saved in a file on the user's system.
 ## To-do
 * Use XDG paths with fallback paths.
 * Use full path for database file location.
-* Solve problem. When first and only url is removed and a new url is then added causes problem.
 
 ## License
 This project is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2 of the License.
