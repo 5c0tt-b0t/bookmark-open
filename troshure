@@ -16,23 +16,31 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-SCRIPT_NAME=`echo $0 | sed 's_/_\n_g' | tail -n 1`
+SCRIPT_NAME=`basename $0`
 readonly SCRIPT_NAME
 ECHO_HELP="Try '$SCRIPT_NAME --help' for more information."
 readonly ECHO_HELP
 
-CFG_LOCATION="$HOME/.config/$SCRIPT_NAME/"
-CFG_FILE="${CFG_LOCATION}${SCRIPT_NAME}"
+CFG_FILE="$HOME/.config/$SCRIPT_NAME/${SCRIPT_NAME}"
+CFG_FOLDER=`dirname $CFG_FILE`
 if [ ! -e "$CFG_FILE" ]; then
 	if [ "$1" = "init" ]; then
+		if [ "$(echo $2 | cut -c 1)" != "/" ]; then
+			echo "Please use a full path."
+			exit 1
+		fi
+
+		if [ ! -d "$CFG_FOLDER" ]; then
+			mkdir "$CFG_FOLDER"
+		fi
+
 		touch "$2"
 		echo "Database created: $2"
-		mkdir "$CFG_LOCATION"
 		echo "DB_LOCATION $2" > "$CFG_FILE"
 	else
 		echo "Database is not initialised."
 		echo "To initialise the database: '$SCRIPT_NAME init path'."
-		echo "Where the path is the file path to the database."
+		echo "Where 'path' is the file path to the database."
 	fi
 	exit
 else

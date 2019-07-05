@@ -2,12 +2,15 @@
 Fancy bookmarking system.
 
 ## Features
-- [x] Usage from the terminal.
-- [ ] GUI (dmenu and rofi).
-- [ ] Integration with browsers.
-- [ ] Multiple groupings or collections.
-- [ ] Open a collection of sites in one go.
-- [ ] Open websites in a collection one by one, stepping through.
+* Usage from the terminal.
+
+## Features to implement.
+* POSIX compliant.
+* GUI (dmenu and rofi).
+* Integration with browsers.
+* Multiple groupings or collections.
+* Open a collection of sites in one go.
+* Open websites in a collection one by one, stepping through.
 
 ## Getting started
 Execute:
@@ -18,7 +21,7 @@ Now you need to initialise the database:
 ```{BASH}
 troshure init PATH
 ```
-where PATH is the file path of your database file.
+where PATH is the full path to your database file.
 You should now be set to use troshure on the terminal.
 
 ## Structure
@@ -27,7 +30,6 @@ All urls will be saved in a file on the user's system.
 
 ## To-do
 * Use XDG paths with fallback paths.
-* Use full path for database file location.
 
 ## License
 This project is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2 of the License.
