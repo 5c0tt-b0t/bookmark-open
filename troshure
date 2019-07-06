@@ -18,8 +18,6 @@
 
 SCRIPT_NAME=`basename $0`
 readonly SCRIPT_NAME
-ECHO_HELP="Try '$SCRIPT_NAME --help' for more information."
-readonly ECHO_HELP
 
 # Config file only contains the path to db for now.
 # Config file is deleted when db is deleted, otherwise 'database not fond' error will be shown
@@ -59,14 +57,19 @@ else
 	fi
 fi
 
+ECHO_HELP="Try '$SCRIPT_NAME --help' for more information."
+readonly ECHO_HELP
+
 help() {
 	echo "Usage: $SCRIPT_NAME"
-	echo "\t-                       Read from standard input."
-	echo "\t-a | --add url          Add a url."
-	echo "\t-d | --delete id        Delete url with ID."
-	echo "\t-D | --delete-db        Delete database."
-	echo "\t-l | --list-all         List all urls saved."
-	echo "\t          "
+	echo "\t{ --add | --delete | --delete-db | --list-all | --open }"
+	echo 
+	echo "\t-                        Read from standard input."
+	echo "\t-a | --add        url    Add a url."
+	echo "\t-d | --delete     id     Delete url with ID."
+	echo "\t-D | --delete-db         Delete database."
+	echo "\t-l | --list-all          List all urls saved."
+	echo "\t-o | --open       id     Open url in the browser."
 	exit
 }
 
@@ -104,7 +107,7 @@ deleteUrl() {
 	fi
 }
 
-printUrls() {
+listUrls() {
 	if [ -s $DB ]; then
 		cat "$DB" | awk -F " " 'BEGIN { print "ID\tURL"} { print $1 "\t" $2}'
 	else
@@ -112,8 +115,19 @@ printUrls() {
 	fi
 }
 
+URL_OPEN_CMD="xdg-open"
+which "$URL_OPEN_CMD" >/dev/null 2>&1
+if [ "$?" -ne 0 ]; then
+	# On a Mac, instead of xdg-open, open is used.
+	URL_OPEN_CMD="open"
+fi
+
+openUrls() {
+	cat "$DB" | awk '{ print $2 }' | xargs -L 1 "$URL_OPEN_CMD" &
+}
+
 if [ $# -eq 0 ]; then
-	help
+	openUrls
 	exit
 fi
 
@@ -161,7 +175,16 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			echo "Database deleted."
 			;;
 		-l|--list-all)
-			printUrls
+			listUrls
+			exit
+			;;
+		-o|--open)
+			URL=`cat $DB | grep "^$2" | awk '{print $2}'`
+			bash $URL_OPEN_CMD "$URL" &
+			exit
+			;;
+		-O|--open-all)
+			openUrls
 			exit
 			;;
 		*)
