@@ -71,19 +71,22 @@ help() {
 
 add() {
 	# Basic url validation
-	echo $1 | grep -q  -E "https?://[0-9A-Za-z]+\..+"
+	echo "$1" | grep -q  -E "https?://[0-9A-Za-z]+\..+"
 	if [ $? -eq 1 ]; then
 		echo "$1: Not a url."
 		exit 1
 	fi
 
-	if grep -q "$1" $DB; then
+	cat "$DB" | awk '{ print $2 }' | grep -q "^$1\$"
+	if [ $? -eq 0 ]; then
 		echo "$1: Already saved."
 		exit
 	fi
 
 	# ID of first item added is 1
-	ID=`expr $(tail -n 1 $DB | awk '{ print $1 }') + 1`
+	LAST_ID=`tail -n 1 "$DB" | awk '{ print $1 }'`
+	LAST_ID="${LAST_ID:-0}"
+	ID=`expr $LAST_ID + 1`
 	echo "${ID} $1" >> $DB
 }
 
