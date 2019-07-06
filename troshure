@@ -61,11 +61,11 @@ fi
 
 help() {
 	echo "Usage: $SCRIPT_NAME"
-	echo "\t-                           Read from standard input."
+	echo "\t-                       Read from standard input."
 	echo "\t-a | --add url          Add a url."
 	echo "\t-d | --delete id        Delete url with ID."
 	echo "\t-D | --delete-db        Delete database."
-	echo "\t-p | --print-all       Print urls saved."
+	echo "\t-l | --list-all         List all urls saved."
 	echo "\t          "
 	exit
 }
@@ -160,7 +160,7 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			rm $CFG_FILE
 			echo "Database deleted."
 			;;
-		-p|--print-all)
+		-l|--list-all)
 			printUrls
 			exit
 			;;
