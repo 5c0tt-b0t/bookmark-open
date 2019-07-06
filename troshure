@@ -61,11 +61,12 @@ fi
 
 help() {
 	echo "Usage: $SCRIPT_NAME"
-	echo "\t-       Read from standard input."
-	echo "\t-a url  Add a url."
-	echo "\t-d id   Delete url with ID."
-	echo "\t-D      Delete database."
-	echo "\t-p      Print urls saved."
+	echo "\t-                           Read from standard input."
+	echo "\t-a | --add url          Add a url."
+	echo "\t-d | --delete id        Delete url with ID."
+	echo "\t-D | --delete-db        Delete database."
+	echo "\t-p | --print-all       Print urls saved."
+	echo "\t          "
 	exit
 }
 
@@ -129,24 +130,24 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			exit
 			;;
 
-		-a)
+		-a|--add)
 			if [ $2 ]; then
 				add $2
 				shift
-			elif [ "$READ_STDIN" = true ]; then
+			elif $READ_STDIN ; then
 				add $(cat /proc/${$}/fd/0)
 			else
 				echo "No url specified."
 				exit 1
 			fi
 			;;
-		-d)
+		-d|--delete)
 			if [ $2 ]; then
 				deleteUrl "$2"
 				shift
 			fi
 			;;
-		-D)
+		-D|--delete-db)
 			echo "The database will be deleted."
 			echo "Do you wish to continue (y/n): "
 			read RESPONSE
@@ -159,7 +160,7 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			rm $CFG_FILE
 			echo "Database deleted."
 			;;
-		-p)
+		-p|--print-all)
 			printUrls
 			exit
 			;;
