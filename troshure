@@ -18,38 +18,29 @@
 
 SCRIPT_NAME=`basename $0`
 readonly SCRIPT_NAME
+export SCRIPT_NAME
 
-# Config file only contains the path to db for now.
-# Config file is deleted when db is deleted, otherwise 'database not fond' error will be shown
-CFG_FILE="$HOME/.config/$SCRIPT_NAME/${SCRIPT_NAME}"
-CFG_FOLDER=`dirname $CFG_FILE`
+CFG_FILE="$HOME/.config/$SCRIPT_NAME/$SCRIPT_NAME"
+
 if [ ! -e "$CFG_FILE" ]; then
-	if [ "$1" = "init" ]; then
-		if [ "$(echo $2 | cut -c 1)" != "/" ]; then
-			echo "Please use a full path."
-			exit 1
-		fi
-
-		if [ ! -d "$CFG_FOLDER" ]; then
-			mkdir "$CFG_FOLDER"
-		fi
-
-		touch "$2"
-		echo "Database created: $2"
-		echo "DB_LOCATION $2" > "$CFG_FILE"
-	else
-		echo "Database is not initialised."
-		echo "To initialise the database: '$SCRIPT_NAME init path'."
-		echo "Where 'path' is the file path to the database."
-	fi
-	exit
+	echo "Troshure not setup propperly.\nMissing configuration file: $CFG_FILE"
+	exit 1
 else
-	DB=`cat $CFG_FILE 2> /dev/null | awk '/DB_LOCATION/ { print $2 }'`
+	# Set variables from the config file.
+        while read LINE; do
+                echo "$LINE" | grep -q -E '^DB |^URL_OPEN_CMD '
+                if [ "$?" -eq 0 ]; then
+                        VAR_NAME=`echo $LINE | awk '{ print $1 }'`
+                        eval "$(echo $LINE | awk '{ print $1 "=\"" $2 "\"" }')"
+                        readonly "$VAR_NAME"
+                fi
+        done < "$CFG_FILE"
+
 	if [ ! "$DB" ]; then
 		echo "Error in configuration file: $CFG_FILE"
+		echo "DB not set."
 		exit 1
 	fi
-	readonly DB
 
 	if [ ! -e "$DB" ]; then
 		echo "${SCRIPT_NAME}: database not found: $DB"
@@ -94,7 +85,7 @@ add() {
 	echo "${ID} $1" >> $DB
 }
 
-deleteUrl() {
+delete() {
 	# Checks if $1 is an integer.
 	echo "$1" | grep -q '^[0-9]*$'
 	if [ "$?" = 0 ]; then
@@ -107,7 +98,7 @@ deleteUrl() {
 	fi
 }
 
-listUrls() {
+listAll() {
 	if [ -s $DB ]; then
 		cat "$DB" | awk -F " " 'BEGIN { print "ID\tURL"} { print $1 "\t" $2}'
 	else
@@ -115,19 +106,18 @@ listUrls() {
 	fi
 }
 
-URL_OPEN_CMD="xdg-open"
-which "$URL_OPEN_CMD" >/dev/null 2>&1
-if [ "$?" -ne 0 ]; then
-	# On a Mac, instead of xdg-open, open is used.
-	URL_OPEN_CMD="open"
-fi
-
-openUrls() {
-	cat "$DB" | awk '{ print $2 }' | xargs -L 1 "$URL_OPEN_CMD" &
+openAll() {
+	URLS=`cat "$DB" | awk '{ print $2 }'`
+	# -n option required. wc -l adds one line because of trailing \n of echo
+	if [ "$(echo -n $URLS | wc -l )" -eq 0 ]; then
+		echo "No entries."
+		exit
+	fi
+	echo "$URLS" | xargs -L 1 "$URL_OPEN_CMD" &
 }
 
 if [ $# -eq 0 ]; then
-	openUrls
+	openAll
 	exit
 fi
 
@@ -157,7 +147,7 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			;;
 		-d|--delete)
 			if [ $2 ]; then
-				deleteUrl "$2"
+				delete "$2"
 				shift
 			fi
 			;;
@@ -175,16 +165,16 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			echo "Database deleted."
 			;;
 		-l|--list-all)
-			listUrls
+			listAll
 			exit
 			;;
 		-o|--open)
 			URL=`cat $DB | grep "^$2" | awk '{print $2}'`
-			bash $URL_OPEN_CMD "$URL" &
+			echo "$URL_OPEN_CMD $URL" | sh -s 2> /dev/null &
 			exit
 			;;
 		-O|--open-all)
-			openUrls
+			openAll
 			exit
 			;;
 		*)
