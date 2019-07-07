@@ -17,7 +17,9 @@ First you will need to setup a database and configuration file. Execute the foll
 ```{BASH}
 ./setup PATH
 ```
-Where PATH is the path to the database file. If no PATH is specified or a directory name is specified, the database file will be created in the current directory or specified directory with name 'website'.
+Where PATH is the path to the database file.
+Try './setup --help' for more information.
+
 Now you will need to copy the 'troshure' script to /usr/local/bin/ so that you can use it no matter your working directory.
 ```{BASH}
 sudo cp troshure /usr/local/bin/
