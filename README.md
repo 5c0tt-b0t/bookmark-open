@@ -15,14 +15,15 @@ Fancy bookmarking system.
 ## Getting started
 First you will need to setup a database and configuration file. Execute the following in your cloned repo:
 ```{BASH}
-./setup PATH
+troshure --init path
 ```
 Where PATH is the path to the database file.
-Try './setup --help' for more information.
+Try 'troshure --init --help' for more information.
 
-Now you will need to copy the 'troshure' script to /usr/local/bin/ so that you can use it no matter your working directory.
+If you want to be able to run the program from any directory, you will need to copy the 'troshure' and 'troshure\_setup' scripts to '/usr/local/bin/' or other directory in your PATH variable.
 ```{BASH}
 sudo cp troshure /usr/local/bin/
+sudo cp troshure_setup /usr/locale/bin/
 ```
 You should now be set to use troshure on the terminal.
 
@@ -32,7 +33,6 @@ All urls will be saved in a file on the user's system.
 
 ## To-do
 * Use XDG paths with fallback paths.
-* Remove -D option and add an option to use a new database.
 
 ## License
 This project is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2 of the License.

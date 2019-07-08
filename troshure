@@ -16,14 +16,36 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-SCRIPT_NAME=`basename $0`
-readonly SCRIPT_NAME
-export SCRIPT_NAME
+APP_NAME=`basename $0`
+export APP_NAME
 
-CFG_FILE="$HOME/.config/$SCRIPT_NAME/$SCRIPT_NAME"
+CFG_FILE="$HOME/.config/$APP_NAME/$APP_NAME"
+export CFG_FILE
+
+ECHO_HELP="Try '$APP_NAME --help' for more information."
+readonly ECHO_HELP
+
+help() {
+	echo "Usage: $APP_NAME [-adDlo]"
+	echo "\t{ --add | --delete | --delete-db | --list-all | --open | --init }\n"
+	echo "\t    --init       path   Initialise database."
+	echo "\t-a, --add        url    Add a url."
+	echo "\t-d, --delete     id     Delete url with ID."
+	echo "\t-D, --delete-db         Delete database."
+	echo "\t-l, --list-all          List all urls saved."
+	echo "\t-o, --open       id     Open url in the browser."
+	echo "\t-                       Read from standard input."
+	echo "\nFor more information on initialising the database try '$APP_NAME --init --help'."
+	exit
+}
+
+if [ "$1" = "--init" ]; then
+	sh "$(dirname $0)/troshure_setup" "$2"
+	exit "$?"
+fi
 
 if [ ! -e "$CFG_FILE" ]; then
-	echo "Troshure not setup propperly.\nMissing configuration file: $CFG_FILE"
+	echo "Missing configuration: ${CFG_FILE}\nTroshure not setup, use '--init' option.\n${ECHO_HELP}"
 	exit 1
 else
 	# Set variables from the config file.
@@ -43,26 +65,11 @@ else
 	fi
 
 	if [ ! -e "$DB" ]; then
-		echo "${SCRIPT_NAME}: database not found: $DB"
+		echo "${APP_NAME}: database not found: $DB"
+		echo "$ECHO_HELP"
 		exit 1
 	fi
 fi
-
-ECHO_HELP="Try '$SCRIPT_NAME --help' for more information."
-readonly ECHO_HELP
-
-help() {
-	echo "Usage: $SCRIPT_NAME"
-	echo "\t{ --add | --delete | --delete-db | --list-all | --open }"
-	echo 
-	echo "\t-                        Read from standard input."
-	echo "\t-a | --add        url    Add a url."
-	echo "\t-d | --delete     id     Delete url with ID."
-	echo "\t-D | --delete-db         Delete database."
-	echo "\t-l | --list-all          List all urls saved."
-	echo "\t-o | --open       id     Open url in the browser."
-	exit
-}
 
 add() {
 	# Basic url validation
@@ -178,7 +185,7 @@ while [ -n "$(echo $1 | grep '-')" ]; do
 			exit
 			;;
 		*)
-			echo "$SCRIPT_NAME: $OPTION: no such option."
+			echo "$APP_NAME: $OPTION: no such option."
 			echo "$ECHO_HELP"
 			exit
 			;;

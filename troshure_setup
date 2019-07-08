@@ -1,9 +1,9 @@
 #!/bin/sh
+# This script is self sufficient and can be run on its own to setup the application
 
-APP_NAME="troshure"
+APP_NAME=${APP_NAME:-"troshure"}
 
-CFG_FILE="$HOME/.config/$APP_NAME/$APP_NAME"
-readonly CFG_FILE
+CFG_FILE=${CFG_FILE:-"$HOME/.config/$APP_NAME/$APP_NAME"}
 
 CFG_FOLDER=`dirname $CFG_FILE`
 if [ ! -d "$CFG_FOLDER" ]; then 
@@ -14,9 +14,8 @@ DEF_DB_NAME="websites"
 readonly DEF_DB_NAME
 
 if [ "$1" = "-h" -o "$1" = "--help" ]; then
-	echo "Usage: $(basename $0) [-h] [FILE-PATH]"
-	echo "\v\t-h | --help\tHelp."
-	echo "\vIf not parameters are given or a folder's path is given, the database file will be created in the current directory or specified directory with name '$DEF_DB_NAME'."
+	echo "Usage: $(basename $0) [FILE-PATH]"
+	echo "If not parameters are given or a folder's path is given, the database file will be created in the current directory or specified directory with name '$DEF_DB_NAME'."
 	exit 0
 fi
 
