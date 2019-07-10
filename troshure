@@ -29,14 +29,21 @@ help() {
 	echo "Usage: $APP_NAME [-adDlo]"
 	echo "\t{ --add | --delete | --delete-db | --list-all | --open | --init }\n"
 	echo "\t    --init       path   Initialise database."
+	echo "\t                        For more information try '--init --help'"
 	echo "\t-a, --add        url    Add a url."
 	echo "\t-d, --delete     id     Delete url with ID."
 	echo "\t-D, --delete-db         Delete database."
 	echo "\t-l, --list-all          List all urls saved."
 	echo "\t-o, --open       id     Open url in the browser."
+	echo "\t-O, --open-all          Open all urls."
 	echo "\t-                       Read from standard input."
-	echo "\nFor more information on initialising the database try '$APP_NAME --init --help'."
+	echo "\nDefault behaviour, if no arguments are specified is the same as -O argument."
 	exit
+}
+
+errorMsg() {
+	echo "$APP_NAME: $1\n$ECHO_HELP"
+	exit 1
 }
 
 if [ "$1" = "--init" ]; then
@@ -45,8 +52,7 @@ if [ "$1" = "--init" ]; then
 fi
 
 if [ ! -e "$CFG_FILE" ]; then
-	echo "Missing configuration: ${CFG_FILE}\nTroshure not setup, use '--init' option.\n${ECHO_HELP}"
-	exit 1
+	errorMsg "missing configuration: ${CFG_FILE}\nTroshure not setup, use '--init' option."
 else
 	# Set variables from the config file.
         while read LINE; do
@@ -59,15 +65,11 @@ else
         done < "$CFG_FILE"
 
 	if [ ! "$DB" ]; then
-		echo "Error in configuration file: $CFG_FILE"
-		echo "DB not set."
-		exit 1
+		errorMsg "error in configuration file: ${CFG_FILE}\nDB not set."
 	fi
 
 	if [ ! -e "$DB" ]; then
-		echo "${APP_NAME}: database not found: $DB"
-		echo "$ECHO_HELP"
-		exit 1
+		errorMsg "database not found: $DB"
 	fi
 fi
 
@@ -75,14 +77,13 @@ add() {
 	# Basic url validation
 	echo "$1" | grep -q  -E "https?://[0-9A-Za-z]+\..+"
 	if [ $? -eq 1 ]; then
-		echo "$1: Not a url."
-		exit 1
+		errorMsg "$1: Not a url."
 	fi
 
 	cat "$DB" | awk '{ print $2 }' | grep -q "^$1\$"
 	if [ $? -eq 0 ]; then
-		echo "$1: Already saved."
-		exit
+		echo "$1: already saved."
+		exit 0
 	fi
 
 	# ID of first item added is 1
@@ -97,11 +98,9 @@ delete() {
 	echo "$1" | grep -q '^[0-9]*$'
 	if [ "$?" = 0 ]; then
 		TEXT=`sed "/^${1} ./d" $DB`
-		# -n required as /n causes problems if all urls are deleted.
 		echo -n "$TEXT" > $DB
 	else
-		echo "$1: Not an ID."
-		exit 1
+		errorMsg "$1: Not an ID."
 	fi
 }
 
@@ -116,11 +115,9 @@ listAll() {
 openAll() {
 	URLS=`cat "$DB" | awk '{ print $2 }'`
 	# -n option required. wc -l adds one line because of trailing \n of echo
-	if [ "$(echo -n $URLS | wc -l )" -eq 0 ]; then
-		echo "No entries."
-		exit
+	if [ "$( cat "$DB" | awk '{ print $2 }' | wc -l )" -gt 0 ]; then
+		echo "$URLS" | xargs -L 1 "$URL_OPEN_CMD" &
 	fi
-	echo "$URLS" | xargs -L 1 "$URL_OPEN_CMD" &
 }
 
 if [ $# -eq 0 ]; then
@@ -134,61 +131,51 @@ if [ "$1" = "-" ]; then
 	shift
 fi
 
-while [ -n "$(echo $1 | grep '-')" ]; do
-	case $1 in
-		-h|--help)
-			help
-			exit
-			;;
+case $1 in
+	-h|--help)
+		help
+		;;
 
-		-a|--add)
-			if [ $2 ]; then
-				add $2
-				shift
-			elif $READ_STDIN ; then
-				add $(cat /proc/${$}/fd/0)
-			else
-				echo "No url specified."
-				exit 1
-			fi
-			;;
-		-d|--delete)
-			if [ $2 ]; then
-				delete "$2"
-				shift
-			fi
-			;;
-		-D|--delete-db)
-			echo "The database will be deleted."
-			echo "Do you wish to continue (y/n): "
-			read RESPONSE
-			echo $RESPONSE | grep -q '^[yY]'
-			if [ "$?" = 1 ]; then
-				exit 0
-			fi
+	-a|--add)
+		if [ $2 ]; then
+			add $2
+			shift
+		elif $READ_STDIN ; then
+			add $(cat /proc/${$}/fd/0)
+		else
+			errorMsg "No url specified." 1
+		fi
+		;;
+	-d|--delete)
+		if [ $2 ]; then
+			delete "$2"
+			shift
+		fi
+		;;
+	-D|--delete-db)
+		echo "The database will be deleted."
+		echo "Do you wish to continue (y/n): "
+		read RESPONSE
+		echo $RESPONSE | grep -q '^[yY]'
+		if [ "$?" = 1 ]; then
+			exit 0
+		fi
 
-			rm $DB
-			rm $CFG_FILE
-			echo "Database deleted."
-			;;
-		-l|--list-all)
-			listAll
-			exit
-			;;
-		-o|--open)
-			URL=`cat $DB | grep "^$2" | awk '{print $2}'`
-			echo "$URL_OPEN_CMD $URL" | sh -s 2> /dev/null &
-			exit
-			;;
-		-O|--open-all)
-			openAll
-			exit
-			;;
-		*)
-			echo "$APP_NAME: $OPTION: no such option."
-			echo "$ECHO_HELP"
-			exit
-			;;
-	esac
-	shift
-done
+		rm $DB
+		rm $CFG_FILE
+		echo "Database deleted."
+		;;
+	-l|--list-all)
+		listAll
+		;;
+	-o|--open)
+		URL=`cat $DB | grep "^$2" | awk '{print $2}'`
+		echo "$URL_OPEN_CMD $URL" | sh -s 2> /dev/null &
+		;;
+	-O|--open-all)
+		openAll
+		;;
+	*)
+		errorMsg "$OPTION: no such option." 1
+		;;
+esac
