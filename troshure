@@ -47,7 +47,7 @@ errorMsg() {
 }
 
 if [ "$1" = "--init" ]; then
-	sh "$(dirname $0)/troshure_setup" "$2"
+	sh "troshure_setup" "$2"
 	exit "$?"
 fi
 
@@ -120,11 +120,6 @@ openAll() {
 	fi
 }
 
-if [ $# -eq 0 ]; then
-	openAll
-	exit
-fi
-
 READ_STDIN=false
 if [ "$1" = "-" ]; then
 	READ_STDIN=true
@@ -132,6 +127,9 @@ if [ "$1" = "-" ]; then
 fi
 
 case $1 in
+	'')
+		openAll
+		;;
 	-h|--help)
 		help
 		;;
