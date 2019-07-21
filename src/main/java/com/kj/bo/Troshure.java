@@ -16,7 +16,7 @@ public class Troshure {
     	final CommandLineParser cmdLineArgs = new DefaultParser();
 		CommandLine cmdLine;
     	try{
-    		cmdLine = cmdLineArgs.parse(CLIOptions.get(),args);
+    		cmdLine = cmdLineArgs.parse(CLIOptions.get(), args);
     		Arrays.stream(cmdLine.getOptions()).forEachOrdered( (Option opt) -> {
 					final String[] arguments = opt.getValues();
 					try {
