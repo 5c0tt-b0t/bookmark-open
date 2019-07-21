@@ -5,29 +5,40 @@ import org.apache.commons.cli.Options;
 
 public class CLIOptions {
 
-	public static Options getOptions(){
-		Options options = new Options();
+	private static Options options;
 
-		Option add = Option.builder("a")
-				.longOpt("add")
-				.hasArg()
-				.desc("Add a url.")
-				.build();
-		options.addOption(add);
+	public static Options get(){
+		if(options == null){
+			options = initOptions();
+		}
+
+		return options;
+	}
+
+	private static Options initOptions(){
+		Options opt = new Options();
 
 		Option delete = Option.builder("d")
 				.longOpt("delete")
 				.hasArg()
 				.desc("Delete url with specified id.")
 				.build();
-		options.addOption(delete);
+		opt.addOption(delete);
 
 		Option help = Option.builder("h")
 				.longOpt("help")
 				.desc("Help menu.")
 				.build();
-		options.addOption(help);
-		return options;
+		opt.addOption(help);
+
+		Option add = Option.builder("a")
+				.longOpt("add")
+				.hasArg()
+				.desc("Add.")
+				.build();
+		opt.addOption(add);
+
+		return opt;
 	}
 
 }
