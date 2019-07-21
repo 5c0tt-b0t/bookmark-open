@@ -1,17 +1,24 @@
 package com.kj.bo.options;
 
-import com.kj.bo.Strategy;
-import org.apache.commons.cli.Option;
+import com.kj.bo.Database;
 
-public class Delete implements Strategy, CLIOption{
+public class Delete extends CLIOption{
 
-	@Override
-	public void execute(String[] args) {
-		System.out.println("Delete url.");
+	public Delete(){
+		super("d","delete",true,"delete url");
 	}
 
 	@Override
-	public Option getOption() {
-		return Option.builder("d").longOpt("delete").hasArg().desc("delete url").build();
+	public void execute(String[] args, Database db) {
+		long[] ids = new long[args.length];
+		for(int k=0; k < args.length; k++){
+			try {
+				ids[k] = Long.parseLong(args[k]);
+			} catch (NumberFormatException notANumber){
+				System.err.println(args[k] + " not an id.");
+			}
+		}
+		db.delete(ids);
 	}
+
 }

@@ -1,20 +1,16 @@
 package com.kj.bo.options;
 
-import com.kj.bo.Strategy;
-import org.apache.commons.cli.Option;
+import com.kj.bo.Database;
 
-import java.util.Arrays;
+public class Add extends CLIOption {
 
-public class Add implements Strategy, CLIOption
-{
-
-	@Override
-	public void execute(String[] args) {
-		System.out.println("ADDING TO DB" + Arrays.toString(args));
+	public Add(){
+		super("a","add",true,"Add.");
 	}
 
 	@Override
-	public Option getOption(){
-		return Option.builder("a").longOpt("add").hasArg().desc("Add.").build();
+	public void execute(String[] args, Database db) {
+		db.add(args);
 	}
+
 }

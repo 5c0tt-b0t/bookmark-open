@@ -1,15 +1,11 @@
 package com.kj.bo;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.cli.Option;
+import com.kj.bo.options.CLIOption;
+import org.apache.commons.cli.*;
 
 import java.util.Arrays;
 
 public class Troshure {
-
 
     public static void main( String[] args )
     {
@@ -17,14 +13,10 @@ public class Troshure {
 		CommandLine cmdLine;
     	try{
     		cmdLine = cmdLineArgs.parse(CLIOptions.get(), args);
-    		Arrays.stream(cmdLine.getOptions()).forEachOrdered( (Option opt) -> {
-					final String[] arguments = opt.getValues();
-					try {
-						System.out.println("-" + opt.getOpt() + ", " + arguments.length + " args: " + Arrays.toString(arguments));
-					} catch(NullPointerException noArgsError){
-						System.out.println("-" + opt.getOpt() +  ", no args");
-					}
-    		});
+    		Database db = new FileDatabase();
+    		for(Option opt : cmdLine.getOptions()){
+				((CLIOption) opt).execute(opt.getValues(), db);
+			}
 		} catch(ParseException e){
     		System.out.println(Arrays.toString(args));
     		System.out.println("error");

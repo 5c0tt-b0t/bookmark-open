@@ -2,7 +2,6 @@ package com.kj.bo;
 
 import com.kj.bo.options.Add;
 import com.kj.bo.options.Delete;
-import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
 public class CLIOptions {
@@ -20,8 +19,8 @@ public class CLIOptions {
 	private static void initOptions(){
 		options = new Options();
 
-		options.addOption(new Delete().getOption());
-		options.addOption(new Add().getOption());
+		options.addOption(new Delete());
+		options.addOption(new Add());
 	}
 
 }
