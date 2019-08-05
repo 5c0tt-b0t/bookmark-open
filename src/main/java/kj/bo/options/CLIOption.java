@@ -1,6 +1,6 @@
-package com.kj.bo.options;
+package kj.bo.options;
 
-import com.kj.bo.Database;
+import kj.bo.database.Database;
 import org.apache.commons.cli.Option;
 
 public abstract class CLIOption extends Option{

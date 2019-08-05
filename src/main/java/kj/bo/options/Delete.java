@@ -1,6 +1,6 @@
-package com.kj.bo.options;
+package kj.bo.options;
 
-import com.kj.bo.Database;
+import kj.bo.database.Database;
 
 public class Delete extends CLIOption{
 

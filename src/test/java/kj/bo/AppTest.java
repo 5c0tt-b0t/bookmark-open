@@ -1,4 +1,4 @@
-package com.kj.bo;
+package kj.bo;
 
 import static org.junit.Assert.assertTrue;
 

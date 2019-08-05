@@ -1,7 +1,7 @@
-package com.kj.bo;
+package kj.bo;
 
-import com.kj.bo.options.Add;
-import com.kj.bo.options.Delete;
+import kj.bo.options.Add;
+import kj.bo.options.Delete;
 import org.apache.commons.cli.Options;
 
 public class CLIOptions {

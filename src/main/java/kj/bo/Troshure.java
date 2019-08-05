@@ -1,13 +1,15 @@
-package com.kj.bo;
+package kj.bo;
 
-import com.kj.bo.options.CLIOption;
+import kj.bo.database.Database;
+import kj.bo.database.FileDatabase;
+import kj.bo.options.CLIOption;
 import org.apache.commons.cli.*;
 
 import java.util.Arrays;
 
 public class Troshure {
 
-    public static void main( String[] args )
+    public static void main(String[] args)
     {
     	final CommandLineParser cmdLineArgs = new DefaultParser();
 		CommandLine cmdLine;
