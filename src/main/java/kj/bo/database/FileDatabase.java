@@ -1,12 +1,17 @@
 package kj.bo.database;
 
-import java.io.*;
-import java.nio.charset.Charset;
-import java.nio.file.*;
-import java.util.*;
+import kj.bo.Entity;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.LongStream;
-import java.util.stream.Stream;
 
 /*
 Each field in the file is separated with a space.
@@ -24,71 +29,138 @@ Example of a database file.
 5 https://www.duckduckgo.com search,privacy
 10 https://www.bbc.com news
 */
+enum Header {
+	NUM_ENTRIES, HIGHEST_ID;
+
+	private static final String SEPARATOR = " ";
+
+	public static long get(Header field, String line){
+		if(line == null) throw new NullPointerException("Cannot get header field.");
+
+		final String[] values = line.split(SEPARATOR);
+		if(values.length != Header.values().length)
+			throw new IllegalArgumentException("Mismatch between required and received header values." +
+					"\nHeadder: " + line +
+					"\nRequired fields: " + Header.values().toString() +
+					"\nNote: The required field sequence shown might not be correctly ordered.");
+
+		return Long.parseLong(values[field.ordinal()]);
+	}
+
+}
+
+// Ordinal value of the enum is used to get a value of a field of an entry.
+// The sequence of the enum values should reflect the sequence of fields in an entry.
+enum Field {
+	// For setting values, checks for null pointer and correct object type are done in the set method.
+	ID   (Long.class	, Entity::getId		, Long::parseLong				, (entity, value) -> entity.setId((long) value)),
+	URL  (String.class	, Entity::getUrl	, value -> value				, (entity, value) -> entity.setUrl((String) value)),
+	TAGS (String[].class, Entity::getTags	, values -> values.split(","), (entity, value) -> entity.setTags((String[]) value));
+
+	// TAG_SEPARATOR not defined as it cannot be used when the enums are being created. It causes a forward reference.
+	protected static final String SEPARATOR = " ";
+
+	private final Class type;
+	private final Function<Entity, Object> getValueFromEntity;
+	private final Function<String, Object> getValueFromLine;
+	private final BiConsumer<Entity, Object> entityValueSetter;
+
+	Field(Class type,
+		  Function<Entity, Object> getValueFromEntity,
+		  Function<String, Object> stringToValueConverter,
+		  BiConsumer<Entity, Object> entityValueSetter)
+	{
+		this.type = type;
+		this.getValueFromEntity = getValueFromEntity;
+		this.getValueFromLine = line -> stringToValueConverter.apply(line.split(SEPARATOR)[this.ordinal()]);
+		this.entityValueSetter = entityValueSetter;
+	}
+
+	protected Object get(Entity entity){
+		return this.getValueFromEntity.apply(entity);
+	}
+
+	protected Object get(String line){
+		if(line == null) throw new NullPointerException("Cannot get entry's value.");
+
+		if(line.split(SEPARATOR).length != Field.values().length)
+			throw  new IllegalArgumentException("Mismatch between required and received entry values." +
+					"\nEntry: " + line +
+					"\nRequired fields: " + Field.values().toString() +
+					"\nNote: The required field sequence shown might not be correctly ordered.");
+
+		return this.getValueFromLine.apply(line);
+	}
+
+	protected void set(Entity entity, Object value){
+		if (value == null)
+			throw new NullPointerException();
+		else if (!this.type.isInstance(value))
+			throw new IllegalArgumentException("Invalid value: " + value +
+					"\nRequired to be an instance of " + this.type.toString() +
+					"\nReceived an instance of " + value.getClass().toString());
+
+		this.entityValueSetter.accept(entity, value);
+	}
+
+}
 
 public class FileDatabase implements Database {
 
-	// String because the .split method of String requires it.
-	private static final String SEPARATOR = " ", TAG_SEPARATOR = ",";
+	private final String fileName;
+	private final long numOfEntries, maxId;
 
 	private static FileDatabase singleton;
-
-	private final String fileName;
-	private final long numOfEntries;
-	private final long maxId;
-
-	private enum HeadderField {NUM_ENTRIES, HIGHEST_ID;};
-	private static class Headder extends EnumMap<HeadderField, Object> {
-		public Headder(String headder){
-			super(HeadderField.class);
-			final String[] values = headder.split(SEPARATOR);
-			final HeadderField[] fields = HeadderField.values();
-			for(int k = 0; k < fields.length; k++){
-				Object value = fields[k];
-				switch(fields[k]){
-					case HIGHEST_ID:
-					case NUM_ENTRIES: value = Long.parseLong(values[k]); break;
-				}
-				this.put(fields[k], value);
-			}
-		}
-	}
-
-	// Ordinal value of the enum is used to get a value of a field of an entry.
-	// The sequence of the enum values should reflect the sequence of fields in an entry.
-	private static enum Field {ID, URL, TAGS;};
-	private static Object getField(Field field, String line){
-		try{
-			String value = line.split(SEPARATOR)[field.ordinal()];
-			switch(field){
-				case ID:  return Long.parseLong(value);
-				case URL: return value;
-				case TAGS: return value.split(TAG_SEPARATOR); // String[] returned
-			}
-		} catch (NullPointerException | NumberFormatException e){
-			System.err.println("Could not parse: " + line + ". " + e.getMessage());
-		}
-		return line;
-	}
 
 	private FileDatabase(String fileName) throws IOException{
 		this.fileName = fileName;
 		final BufferedReader reader = new BufferedReader(new FileReader(fileName));
-		final Headder headder = new Headder(reader.readLine());
-		this.numOfEntries = (long) headder.get(HeadderField.NUM_ENTRIES);
-		this.maxId = (long) headder.get(HeadderField.HIGHEST_ID);
+		final String headder = reader.readLine();
+		this.numOfEntries = Header.get(Header.NUM_ENTRIES, headder);
+		this.maxId = Header.get(Header.HIGHEST_ID, headder);
 		reader.close();
 	}
 
-	public FileDatabase get(String fileName) throws IOException{
+	public FileDatabase get(String fileName) throws IOException {
 		if(singleton == null) singleton = new FileDatabase(fileName);
 		return singleton;
 	}
 
+	// Used when preparing to write to the db file.
+	// Convert and entity to a string forming an entry of the database.
+	private static String wrap(Entity entity){
+		return Arrays.stream(Field.values())
+				.parallel()
+				.map( field -> String.valueOf(field.get(entity)))
+				.collect(Collectors.joining(Field.SEPARATOR));
+	}
+
+	private static List<String> wrap(List<Entity> entities){
+		return entities.parallelStream()
+				.map(FileDatabase::wrap)
+				.collect(Collectors.toList());
+	}
+
+	// Used when after reading the db file.
+	// Converts an entry in the database file (String) to an Entity.
+	private static Entity unwrap(String line){
+		final Entity entity = new Entity();
+		// TODO: Maybe refactor.
+		Field.ID.set(entity, Field.ID.get(line));
+		Field.URL.set(entity, Field.URL.get(line));
+		Field.TAGS.set(entity, Field.TAGS.get(line));
+		return entity;
+	}
+
+	private static List<Entity> unwrap(List<String> lines){
+		return lines.parallelStream()
+				.map(FileDatabase::unwrap)
+				.collect(Collectors.toList());
+	}
+
 	@Override
-	public void add(String[] urls) throws IOException {
-		// TODO: create entry and then add to db.
-		List<String> entries = Arrays.asList(urls);
-		Files.write(Paths.get(fileName), Arrays.asList(urls), Charset.forName("UTF-8"), StandardOpenOption.CREATE,StandardOpenOption.WRITE);
+	public void add(Entity[] entities) throws IOException {
+		// NOTE: remeber to write header first.
 	}
 
 	@Override
@@ -102,28 +174,21 @@ public class FileDatabase implements Database {
 	}
 
 	@Override
-	public List<String> getAll() throws IOException {
+	public List<Entity> getAll() throws IOException {
 		final List<String> lines = Files.readAllLines(Paths.get(fileName));
-		lines.remove(0); // Remove the headder which is the first line.
-		return Collections.unmodifiableList(lines);
+		lines.remove(0); // Remove the header which is the first line.
+		return null;
 	}
 
 	@Override
-	public List<String> get(long[] ids) throws IOException {
-		return Collections.unmodifiableList(this.get((this.getAll()).parallelStream(), ids));
+	public List<Entity> get(long[] ids) throws IOException {
+		//return Collections.unmodifiableList(this.get((this.getAll()).parallelStream(), ids));
+		return null;
 	}
 
-	public List<String> getSequential(long[] ids) throws IOException {
-		return Collections.unmodifiableList(this.get(this.getAll().stream().sequential(), ids));
+	@Override
+	public List<Entity> get(Entity[] entities) throws IOException {
+		return null;
 	}
 
-	private List<String> get(Stream<String> stream, long[] ids) {
-		List<Long> processedIds = LongStream.of(ids)
-				.filter( id -> id <= maxId)
-				.collect(() -> new ArrayList<Long>(), (ArrayList<Long> array, long id) -> array.add(id), (arr1, arr2) -> arr1.addAll(arr2));
-
-		return stream
-				.filter( line -> processedIds.contains((long) getField(Field.ID, line)))
-				.collect(Collectors.toList());
-	}
 }
