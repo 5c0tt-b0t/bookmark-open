@@ -32,14 +32,34 @@ Example of a database file.
 10 https://www.bbc.com news
 */
 
+
+/**
+ * Header fields of the database file
+ * <li>{@link #NUM_ENTRIES}</li>
+ * <li>{@link #HIGHEST_ID}</li>
+ */
 enum HeaderField{NUM_ENTRIES, HIGHEST_ID;};
+// TODO: Rename Header as it can be misleading. It does not specify the columns.
+
+
+/**
+ * Reprentation of the database's header, composed of fields as specified in {@link HeaderField}
+ */
 class Header {
 
 	private static final String SEPARATOR = " ";
 
+	/**
+	 * Maps each field, specified by {@link HeaderField}, of the header to its value.
+	 */
 	private EnumMap<HeaderField, Long> map = new EnumMap<>(HeaderField.class);
 	private static Header singleton;
 
+	/**
+	 *
+	 * @param line
+	 * @exception IllegalArgumentException Malformed header line. It specifies more or less fields than required.
+	 */
 	private Header(String line){
 		final String[] values = line.split(SEPARATOR);
 		final HeaderField[] fields = HeaderField.values();
@@ -56,16 +76,34 @@ class Header {
 				.forEach( k -> map.put(fields[k], Long.parseLong(values[k])));
 	}
 
-	protected static Header get(String headder){
-		if(singleton == null) singleton = new Header(headder);
+	/**
+	 * Returns a Header object representing the header string provided.<br><br>
+	 * <p><b>NOTE:</b>
+	 * Future calls to this method with different parameter
+	 * will result in the same old unchanged Header object to be returned.</p>
+	 * @param header First line in the database file.
+	 * @return Header object representing the header string.
+	 * @exception IllegalArgumentException Malformed header line. It specifies more or less fields than required.
+	 */
+	protected static Header get(String header){
+		if(singleton == null) singleton = new Header(header);
 		return singleton;
 	}
 
+	/**
+	 * Use to update Header object to maintain validity after the addition or deletion of entries.
+	 * @param entriesChanged
+	 */
 	protected void update(long entriesChanged) {
 		this.map.put(HeaderField.NUM_ENTRIES, map.get(HeaderField.NUM_ENTRIES) + entriesChanged);
 		this.map.put(HeaderField.HIGHEST_ID, map.get(HeaderField.HIGHEST_ID) + entriesChanged);
 	}
 
+	/**
+	 * Returns a String representation of the Header object
+	 * valid for writing the header of the database file.
+	 * @return String entry representing the Header object.
+	 */
 	protected String wrap(){
 		// Do not use a parallel stream as the sting produced has to be ordered.
 		return Stream.of(HeaderField.values())
@@ -74,18 +112,27 @@ class Header {
 				.collect(Collectors.joining(SEPARATOR));
 	}
 
+	/**
+	 * Returns the appropriate value specified in the header, for the field given.
+	 * @param field Field for which to get the value for.
+	 * @return
+	 */
 	protected long get(HeaderField field) {
 		return this.map.get(field);
 	}
 
 }
+
 // Ordinal value of the enum is used to get a value of a field of an entry.
 // The sequence of the enum values should reflect the sequence of fields in an entry.
+/**
+ * Specifies fields of an entry of the database.
+ */
 enum Field {
-	// For setting values, checks for null pointer and correct object type are done in the set method.
+	// For setting values; checks for null pointer and correct object type are done in the set method.
 	ID   (Long.class	, Entity::getId		, Long::parseLong				, (entity, value) -> entity.setId((long) value)),
 	URL  (String.class	, Entity::getUrl	, value -> value				, (entity, value) -> entity.setUrl((String) value)),
-	TAGS (String[].class, Entity::getTags	, values -> values.split(",")	, (entity, value) -> entity.setTags((String[]) value));
+	TAGS (String[].class, Entity::getTags	, values -> values.split(","), (entity, value) -> entity.setTags((String[]) value));
 
 	// TAG_SEPARATOR not defined as it cannot be used when the enums are being created. It causes a forward reference.
 	protected static final String SEPARATOR = " ";
@@ -106,22 +153,52 @@ enum Field {
 		this.entityValueSetter = entityValueSetter;
 	}
 
+	/**
+	 * Returns the value of a field by extracting it from an entity object.
+	 * <br><br>
+	 * <p><b>NOTE:</b>
+	 * You will need to cast the returned value appropriately.<br>
+	 *     <p>Example: {@code (long) Field.ID.get(entity)}</p>
+	 * See {@see Field} enum definition for further information about which type to cast to.</p>
+	 * @param entity Entity object.
+	 * @return Appropriate value for the field.
+	 */
 	protected Object get(Entity entity){
 		return this.getValueFromEntity.apply(entity);
 	}
 
-	protected Object get(String line){
-		if(line == null) throw new NullPointerException("Cannot get entry's value.");
+	/**
+	 * Returns the value of the specified field by extracting it from an entry of the database file.
+	 * <br><br>
+	 * <p><b>NOTE:</b>
+	 * You will need to cast the returned value appropriately.<br>
+	 *     <p>Example: {@code (long) Field.ID.get(entry)}</p>
+	 * See {@see Field} enum definition for further information about which type to cast to.</p>
+	 * @param entry Single row or line of the database file specifying an entry.
+	 * @return Appropriate value for the field.
+	 * @exception IllegalArgumentException Malformed entry line. It specifies more or less fields than required.
+	 */
+	protected Object get(String entry){
+		if(entry == null) throw new NullPointerException("Cannot get entry's value.");
 
-		if(line.split(SEPARATOR).length != Field.values().length)
+		if(entry.split(SEPARATOR).length != Field.values().length)
 			throw  new IllegalArgumentException("Mismatch between required and received entry values." +
-					"\nEntry: " + line +
+					"\nEntry: " + entry +
 					"\nRequired fields: " + Field.values().toString() +
 					"\nNote: The required field sequence shown might not be correctly ordered.");
-
-		return this.getValueFromLine.apply(line);
+		return this.getValueFromLine.apply(entry);
 	}
 
+
+	/**
+	 * Set the value corresponding to a field, of an entity.
+	 * <p>This method does not allow a null value to be set.</p>
+	 * @param entity Entity to set the value of.
+	 * @param value Value to set.
+	 * @exception NullPointerException If the value parameter is null.
+	 * @exception IllegalArgumentException If the value's type is invalid for the field.<br>
+	 * 			E.g. value of type String for ID field.
+	 */
 	protected void set(Entity entity, Object value){
 		if (value == null)
 			throw new NullPointerException();
