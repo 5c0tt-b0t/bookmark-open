@@ -7,11 +7,13 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /*
 Each field in the file is separated with a space.
@@ -29,33 +31,61 @@ Example of a database file.
 5 https://www.duckduckgo.com search,privacy
 10 https://www.bbc.com news
 */
-enum Header {
-	NUM_ENTRIES, HIGHEST_ID;
+
+enum HeaderField{NUM_ENTRIES, HIGHEST_ID;};
+class Header {
 
 	private static final String SEPARATOR = " ";
 
-	public static long get(Header field, String line){
-		if(line == null) throw new NullPointerException("Cannot get header field.");
+	private EnumMap<HeaderField, Long> map = new EnumMap<>(HeaderField.class);
+	private static Header singleton;
 
+	private Header(String line){
 		final String[] values = line.split(SEPARATOR);
-		if(values.length != Header.values().length)
-			throw new IllegalArgumentException("Mismatch between required and received header values." +
-					"\nHeadder: " + line +
-					"\nRequired fields: " + Header.values().toString() +
-					"\nNote: The required field sequence shown might not be correctly ordered.");
+		final HeaderField[] fields = HeaderField.values();
 
-		return Long.parseLong(values[field.ordinal()]);
+		if(values.length != fields.length)
+			throw new IllegalArgumentException("Mismatch between required and received header values." +
+				"\nHeadder: " + line +
+				"\nRequired fields: " + fields.toString() +
+				"\nNote: The required field sequence shown might not be correctly ordered.");
+
+		// TODO: Test if there are synchronisation problems when using a parallel stream.
+		IntStream.range(0, values.length)
+				.sequential()
+				.forEach( k -> map.put(fields[k], Long.parseLong(values[k])));
+	}
+
+	protected static Header get(String headder){
+		if(singleton == null) singleton = new Header(headder);
+		return singleton;
+	}
+
+	protected void update(long entriesChanged) {
+		this.map.put(HeaderField.NUM_ENTRIES, map.get(HeaderField.NUM_ENTRIES) + entriesChanged);
+		this.map.put(HeaderField.HIGHEST_ID, map.get(HeaderField.HIGHEST_ID) + entriesChanged);
+	}
+
+	protected String wrap(){
+		// Do not use a parallel stream as the sting produced has to be ordered.
+		return Stream.of(HeaderField.values())
+				.sequential()
+				.map( field -> String.valueOf(this.map.get(field)))
+				.collect(Collectors.joining(SEPARATOR));
+	}
+
+	protected long get(HeaderField field) {
+		return this.map.get(field);
 	}
 
 }
-
 // Ordinal value of the enum is used to get a value of a field of an entry.
 // The sequence of the enum values should reflect the sequence of fields in an entry.
 enum Field {
 	// For setting values, checks for null pointer and correct object type are done in the set method.
 	ID   (Long.class	, Entity::getId		, Long::parseLong				, (entity, value) -> entity.setId((long) value)),
 	URL  (String.class	, Entity::getUrl	, value -> value				, (entity, value) -> entity.setUrl((String) value)),
-	TAGS (String[].class, Entity::getTags	, values -> values.split(","), (entity, value) -> entity.setTags((String[]) value));
+	TAGS (String[].class, Entity::getTags	, values -> values.split(",")	, (entity, value) -> entity.setTags((String[]) value));
 
 	// TAG_SEPARATOR not defined as it cannot be used when the enums are being created. It causes a forward reference.
 	protected static final String SEPARATOR = " ";
@@ -107,17 +137,17 @@ enum Field {
 
 public class FileDatabase implements Database {
 
+	private static final long BULK_THRESHOLD = 100000000;
+
 	private final String fileName;
-	private final long numOfEntries, maxId;
+	private final Header header;
 
 	private static FileDatabase singleton;
 
 	private FileDatabase(String fileName) throws IOException{
 		this.fileName = fileName;
 		final BufferedReader reader = new BufferedReader(new FileReader(fileName));
-		final String headder = reader.readLine();
-		this.numOfEntries = Header.get(Header.NUM_ENTRIES, headder);
-		this.maxId = Header.get(Header.HIGHEST_ID, headder);
+		this.header = Header.get(reader.readLine());
 		reader.close();
 	}
 
@@ -129,8 +159,11 @@ public class FileDatabase implements Database {
 	// Used when preparing to write to the db file.
 	// Convert and entity to a string forming an entry of the database.
 	private static String wrap(Entity entity){
+		// NOTE: Ids have to be set appropriately before wrapping the entities.
+		// Order ahas to be maintained so that each value is in the correct position.
+		// TODO: Check that Field.values() returns values in order.
 		return Arrays.stream(Field.values())
-				.parallel()
+				.sequential()
 				.map( field -> String.valueOf(field.get(entity)))
 				.collect(Collectors.joining(Field.SEPARATOR));
 	}
@@ -138,10 +171,11 @@ public class FileDatabase implements Database {
 	private static List<String> wrap(List<Entity> entities){
 		return entities.parallelStream()
 				.map(FileDatabase::wrap)
+				.sorted(Comparator.comparingLong(line -> (long) Field.ID.get((String) line)))
 				.collect(Collectors.toList());
 	}
 
-	// Used when after reading the db file.
+	// Used after reading the db file.
 	// Converts an entry in the database file (String) to an Entity.
 	private static Entity unwrap(String line){
 		final Entity entity = new Entity();
@@ -152,6 +186,7 @@ public class FileDatabase implements Database {
 		return entity;
 	}
 
+	// Id ordering is not guaranteed for the returned list.
 	private static List<Entity> unwrap(List<String> lines){
 		return lines.parallelStream()
 				.map(FileDatabase::unwrap)
@@ -160,7 +195,29 @@ public class FileDatabase implements Database {
 
 	@Override
 	public void add(Entity[] entities) throws IOException {
-		// NOTE: remeber to write header first.
+		if(entities.length == 0) return;
+
+		// TODO: Handle overflow of id in case a long variable cannot store it anymore.
+		// Setting ids so that valid ids are assigned.
+		// The ids set, start 1 higher than the highest id already present in the file.
+		final long startFromId = header.get(HeaderField.HIGHEST_ID) + 1;
+		for(int k = 0; k < entities.length; k++) {
+			entities[k].setId(startFromId + k);
+		}
+
+		List<String> lines = this.getEntries(); // Header is already removed from the getEntries values.
+
+		// Adding header.
+		header.update(entities.length);
+		lines.add(0, header.wrap());
+
+		// Adding new entries.
+		lines.addAll(wrap(Arrays.asList(entities)));
+
+		Files.write(Paths.get(fileName), lines,
+				StandardOpenOption.CREATE,
+				StandardOpenOption.TRUNCATE_EXISTING,
+				StandardOpenOption.WRITE);
 	}
 
 	@Override
@@ -173,21 +230,54 @@ public class FileDatabase implements Database {
 
 	}
 
+	// Returns all lines in the db file except the header.
+	private List<String> getEntries() throws IOException{
+		final List<String> lines =  Files.readAllLines(Paths.get(fileName));
+		lines.remove(0); // Remove header.
+		return lines;
+	}
+
 	@Override
 	public List<Entity> getAll() throws IOException {
-		final List<String> lines = Files.readAllLines(Paths.get(fileName));
-		lines.remove(0); // Remove the header which is the first line.
-		return null;
+		final List<String> lines = this.getEntries();
+		return Collections.unmodifiableList(lines
+				.parallelStream()
+				.map(FileDatabase::unwrap)
+				.collect(Collectors.toList()));
 	}
 
 	@Override
-	public List<Entity> get(long[] ids) throws IOException {
-		//return Collections.unmodifiableList(this.get((this.getAll()).parallelStream(), ids));
-		return null;
+	public List<Entity> get(final long[] ids) throws IOException {
+		final long highestId = header.get(HeaderField.HIGHEST_ID);
+
+		long[] idsToFind = ids;
+		// TODO: Set BULK_THRESHOLD an appropriate number.
+		if(idsToFind.length >= BULK_THRESHOLD){
+			Arrays.parallelSort(idsToFind);
+			final int k = Arrays.binarySearch(idsToFind,highestId);
+			if (k != idsToFind.length) {
+				// If the array contains value higher than highestId.
+				// TODO: Check that the array after copyOfRange has the correct values.
+				idsToFind = Arrays.copyOfRange(idsToFind, 0, k);
+			}
+		}
+
+		TreeMap<Long, String> entries = new TreeMap<>(
+				this.getEntries().stream()
+						.collect(Collectors.toMap(ln -> (long) Field.ID.get(ln), Function.identity()))
+		);
+
+		List<Entity> entities = new ArrayList<>();
+		for(long id : idsToFind){
+			if(entries.containsKey(id)) entities.add(unwrap(entries.get(id)));
+		}
+
+		return Collections.unmodifiableList(entities);
 	}
 
 	@Override
-	public List<Entity> get(Entity[] entities) throws IOException {
+	public List<Entity> get(final Entity[] entities) throws IOException {
+		// Needs to mutate entries. Fill entries with their respective data.
 		return null;
 	}
 
