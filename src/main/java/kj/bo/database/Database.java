@@ -18,5 +18,5 @@ public interface Database {
 	List<Entity> get(long[] ids) throws IOException;
 
 	// Mutates entries filling them with data. Entities are required to have an id.
-	List<Entity> get(Entity[] entities) throws IOException;
+	Entity[] get(Entity[] entities) throws IOException;
 }

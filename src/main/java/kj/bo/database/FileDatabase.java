@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
@@ -18,7 +19,8 @@ import java.util.stream.Stream;
 /*
 Each field in the file is separated with a space.
 The last line is an entry, not a trailing \n.
-The first line indicates the number of entries and the highest id:
+The first line, the metadata header as refered to it in code,
+indicates the number of entries and the highest id:
 NUM_ENTRIES HIGHEST_ID
 
 Format of an entry:
@@ -32,40 +34,51 @@ Example of a database file.
 10 https://www.bbc.com news
 */
 
+/*
+IMPORTANT NOTE:
+The defined enums specify the fields of the metadata header and each entry in the database.
+The defined sequence of values in each enum definition should accurately represent the line
+respective line in the database file. For example:
+	enum MetadataFields {NUM_ENTRIES, HIGHEST_ID;};
+for a metadata header line:
+	10 15
+where 10 is the number of entries and 15 is the highest id.
+
+The sequence should correspond to the sequence in line written or read.
+*/
 
 /**
- * Header fields of the database file
+ * Metadata header fields of the database file.
+ *  The header is the first line in the database and these are its fields.
  * <li>{@link #NUM_ENTRIES}</li>
  * <li>{@link #HIGHEST_ID}</li>
  */
-enum HeaderField{NUM_ENTRIES, HIGHEST_ID;};
-// TODO: Rename Header as it can be misleading. It does not specify the columns.
-
+enum MetadataFields {NUM_ENTRIES, HIGHEST_ID;};
 
 /**
- * Reprentation of the database's header, composed of fields as specified in {@link HeaderField}
+ * Reprentation of the database's metadata header, composed of fields as specified in {@link MetadataFields}
  */
-class Header {
+class MetadataHeader {
 
 	private static final String SEPARATOR = " ";
 
 	/**
-	 * Maps each field, specified by {@link HeaderField}, of the header to its value.
+	 * Maps each field, specified by {@link MetadataFields}, of the metadata header to its value.
 	 */
-	private EnumMap<HeaderField, Long> map = new EnumMap<>(HeaderField.class);
-	private static Header singleton;
+	private EnumMap<MetadataFields, Long> map = new EnumMap<>(MetadataFields.class);
+	private static MetadataHeader singleton;
 
 	/**
 	 *
-	 * @param line
-	 * @exception IllegalArgumentException Malformed header line. It specifies more or less fields than required.
+	 * @param line Metadata header line which should be the first line in the file.
+	 * @exception IllegalArgumentException Malformed metadata header line. It specifies more or less fields than required.
 	 */
-	private Header(String line){
+	private MetadataHeader(String line){
 		final String[] values = line.split(SEPARATOR);
-		final HeaderField[] fields = HeaderField.values();
+		final MetadataFields[] fields = MetadataFields.values();
 
 		if(values.length != fields.length)
-			throw new IllegalArgumentException("Mismatch between required and received header values." +
+			throw new IllegalArgumentException("Mismatch between required and received metadata header values." +
 				"\nHeadder: " + line +
 				"\nRequired fields: " + fields.toString() +
 				"\nNote: The required field sequence shown might not be correctly ordered.");
@@ -77,59 +90,67 @@ class Header {
 	}
 
 	/**
-	 * Returns a Header object representing the header string provided.<br><br>
+	 * Returns a MetadataHeader object representing the metadata header string provided.<br><br>
+	 * <p>The metadata header line should be the first line in the database file.</p>
 	 * <p><b>NOTE:</b>
 	 * Future calls to this method with different parameter
-	 * will result in the same old unchanged Header object to be returned.</p>
-	 * @param header First line in the database file.
-	 * @return Header object representing the header string.
-	 * @exception IllegalArgumentException Malformed header line. It specifies more or less fields than required.
+	 * will result in the same old unchanged MetadataHeader object to be returned.</p>
+	 * @param metadata header First line in the database file.
+	 * @return Header object representing the metadata header string.
+	 * @exception IllegalArgumentException Malformed metadata header line. It specifies more or less fields than required.
 	 */
-	protected static Header get(String header){
-		if(singleton == null) singleton = new Header(header);
+	protected static MetadataHeader get(String metadataheader){
+		if(singleton == null) singleton = new MetadataHeader(metadataheader);
 		return singleton;
 	}
 
 	/**
-	 * Use to update Header object to maintain validity after the addition or deletion of entries.
+	 * Use to update the object to maintain validity after the addition or deletion of entries.
 	 * @param entriesChanged
 	 */
 	protected void update(long entriesChanged) {
-		this.map.put(HeaderField.NUM_ENTRIES, map.get(HeaderField.NUM_ENTRIES) + entriesChanged);
-		this.map.put(HeaderField.HIGHEST_ID, map.get(HeaderField.HIGHEST_ID) + entriesChanged);
+		this.map.put(MetadataFields.NUM_ENTRIES, map.get(MetadataFields.NUM_ENTRIES) + entriesChanged);
+		this.map.put(MetadataFields.HIGHEST_ID, map.get(MetadataFields.HIGHEST_ID) + entriesChanged);
 	}
 
 	/**
-	 * Returns a String representation of the Header object
-	 * valid for writing the header of the database file.
+	 * Returns a String representation of the MetadataHeader,
+	 * valid for writing the metadata header of the database file.
 	 * @return String entry representing the Header object.
 	 */
 	protected String wrap(){
 		// Do not use a parallel stream as the sting produced has to be ordered.
-		return Stream.of(HeaderField.values())
+		return Stream.of(MetadataFields.values())
 				.sequential()
 				.map( field -> String.valueOf(this.map.get(field)))
 				.collect(Collectors.joining(SEPARATOR));
 	}
 
 	/**
-	 * Returns the appropriate value specified in the header, for the field given.
+	 * Returns the appropriate value specified in the metadata header, for the field given.
 	 * @param field Field for which to get the value for.
-	 * @return
+	 * @return Appropriate value for the field in the metadata header.
 	 */
-	protected long get(HeaderField field) {
+	protected long get(MetadataFields field) {
 		return this.map.get(field);
 	}
 
 }
 
-// Ordinal value of the enum is used to get a value of a field of an entry.
-// The sequence of the enum values should reflect the sequence of fields in an entry.
 /**
  * Specifies fields of an entry of the database.
  */
 enum Field {
 	// For setting values; checks for null pointer and correct object type are done in the set method.
+	/* Each field is defined as follows:
+		fieldName(
+			type of the value,
+			getter for the field in the Entity class,
+			Parser function to convert a string to the appropriate type of the field,
+			setter for the field in the Entity class.
+		);
+	*  The sequence in which the fields are defined should correspond to how an entry line in the file, is stored.
+	*/
 	ID   (Long.class	, Entity::getId		, Long::parseLong				, (entity, value) -> entity.setId((long) value)),
 	URL  (String.class	, Entity::getUrl	, value -> value				, (entity, value) -> entity.setUrl((String) value)),
 	TAGS (String[].class, Entity::getTags	, values -> values.split(","), (entity, value) -> entity.setTags((String[]) value));
@@ -154,7 +175,7 @@ enum Field {
 	}
 
 	/**
-	 * Returns the value of a field by extracting it from an entity object.
+	 * Returns the value of a field by extracting it from an Entity object.
 	 * <br><br>
 	 * <p><b>NOTE:</b>
 	 * You will need to cast the returned value appropriately.<br>
@@ -212,29 +233,53 @@ enum Field {
 
 }
 
+/**
+ * Database stored as a file designed to work Entity objects.<br><br>
+ * Suited for a CLI application or a program
+ * which exits after performing a single operation on the database.
+ */
 public class FileDatabase implements Database {
 
-	private static final long BULK_THRESHOLD = 100000000;
+	/**
+	 * Threshold after which more efficient algorithms are to be used.
+	 * Using such algorithms on small data sets might result in slower performance.
+	 */
+	private static final long BULK_THRESHOLD = 1000000;
 
 	private final String fileName;
-	private final Header header;
+	private final Path filePath;
+	private final MetadataHeader metadataHeader;
 
 	private static FileDatabase singleton;
 
 	private FileDatabase(String fileName) throws IOException{
 		this.fileName = fileName;
+		this.filePath = Paths.get(fileName);
+
 		final BufferedReader reader = new BufferedReader(new FileReader(fileName));
-		this.header = Header.get(reader.readLine());
+		this.metadataHeader = MetadataHeader.get(reader.readLine());
 		reader.close();
 	}
 
-	public FileDatabase get(String fileName) throws IOException {
-		if(singleton == null) singleton = new FileDatabase(fileName);
+	/**
+	 * Returns a FileDatabase object allowing interaction with a file database.<br><br>
+	 * <p><b>NOTE:</b>
+	 * Future calls to this method with different file path will return
+	 * the same old unmodified FileDatabase object.</p>
+	 * @param filePath Path to the database file.
+	 * @return FileDatabase object.
+	 * @throws IOException In case there is an error opening the file.
+	 */
+	public FileDatabase get(String filePath) throws IOException {
+		if(singleton == null) singleton = new FileDatabase(filePath);
 		return singleton;
 	}
 
-	// Used when preparing to write to the db file.
-	// Convert and entity to a string forming an entry of the database.
+	/**
+	 * Given an entity, a String entry will be returned which can be written to the database file.
+	 * @param entity
+	 * @return Entry to be written to the database file.
+	 */
 	private static String wrap(Entity entity){
 		// NOTE: Ids have to be set appropriately before wrapping the entities.
 		// Order ahas to be maintained so that each value is in the correct position.
@@ -245,29 +290,64 @@ public class FileDatabase implements Database {
 				.collect(Collectors.joining(Field.SEPARATOR));
 	}
 
+	/**
+	 * Given a list of entities, a list of entries writable to the database will be returned.<br>
+	 * The entries returned are in ascending order of id.
+	 * @param entities List of entities.
+	 * @return List of entities writable to the database file.
+	 */
 	private static List<String> wrap(List<Entity> entities){
+		// TODO: Check performance difference between this stream implementation and a for loop.
 		return entities.parallelStream()
 				.map(FileDatabase::wrap)
 				.sorted(Comparator.comparingLong(line -> (long) Field.ID.get((String) line)))
 				.collect(Collectors.toList());
 	}
 
-	// Used after reading the db file.
-	// Converts an entry in the database file (String) to an Entity.
-	private static Entity unwrap(String line){
+	/**
+	 * Returns an Entity object represented by the entry String.
+	 * @param entry Database entry from which to extract the values.
+	 * @return Returns an Entity object represented by the entry String.
+	 */
+	private static Entity unwrap(String entry){
 		final Entity entity = new Entity();
-		// TODO: Maybe refactor.
-		Field.ID.set(entity, Field.ID.get(line));
-		Field.URL.set(entity, Field.URL.get(line));
-		Field.TAGS.set(entity, Field.TAGS.get(line));
+		for(Field field : Field.values()){
+			field.set(entity, field.get(entry));
+		}
 		return entity;
 	}
 
-	// Id ordering is not guaranteed for the returned list.
-	private static List<Entity> unwrap(List<String> lines){
-		return lines.parallelStream()
+	/**
+	 * Given a list of database entries a list of entities representing them is returned.<br><br>
+	 * <p><b>NOTE:</b>
+	 * The returned list is not guaranteed to be ordered by id.</p>
+	 * @param entries
+	 * @return
+	 */
+	private static List<Entity> unwrap(List<String> entries){
+		return entries.parallelStream()
 				.map(FileDatabase::unwrap)
 				.collect(Collectors.toList());
+	}
+
+	/**
+	 * The method reads the database and returns all entries within it.<br><br>
+	 * <p><b>NOTE:</b>
+	 * The metadata header of the database (the first line) is not included in the list as it is not an entry.</p>
+	 * @return List of all entries in the database file.
+	 * @throws IOException In case the database file cannot be read.
+	 */
+	private List<String> getEntries() throws IOException{
+		final List<String> lines =  Files.readAllLines(filePath);
+		lines.remove(0); // Remove metadata header.
+		return lines;
+	}
+
+	private TreeMap<Long, String> getTreeMapOfEntries() throws IOException {
+		return new TreeMap<>(
+				this.getEntries().stream()
+						.collect(Collectors.toMap(ln -> (long) Field.ID.get(ln), Function.identity()))
+		);
 	}
 
 	@Override
@@ -275,18 +355,20 @@ public class FileDatabase implements Database {
 		if(entities.length == 0) return;
 
 		// TODO: Handle overflow of id in case a long variable cannot store it anymore.
+
 		// Setting ids so that valid ids are assigned.
 		// The ids set, start 1 higher than the highest id already present in the file.
-		final long startFromId = header.get(HeaderField.HIGHEST_ID) + 1;
+		final long startFromId = metadataHeader.get(MetadataFields.HIGHEST_ID) + 1;
 		for(int k = 0; k < entities.length; k++) {
 			entities[k].setId(startFromId + k);
 		}
 
-		List<String> lines = this.getEntries(); // Header is already removed from the getEntries values.
+		// The metadata header is ignored by getEntries().
+		List<String> lines = this.getEntries();
 
-		// Adding header.
-		header.update(entities.length);
-		lines.add(0, header.wrap());
+		// Adding metadata header.
+		metadataHeader.update(entities.length);
+		lines.add(0, metadataHeader.wrap());
 
 		// Adding new entries.
 		lines.addAll(wrap(Arrays.asList(entities)));
@@ -307,13 +389,6 @@ public class FileDatabase implements Database {
 
 	}
 
-	// Returns all lines in the db file except the header.
-	private List<String> getEntries() throws IOException{
-		final List<String> lines =  Files.readAllLines(Paths.get(fileName));
-		lines.remove(0); // Remove header.
-		return lines;
-	}
-
 	@Override
 	public List<Entity> getAll() throws IOException {
 		final List<String> lines = this.getEntries();
@@ -325,24 +400,25 @@ public class FileDatabase implements Database {
 
 	@Override
 	public List<Entity> get(final long[] ids) throws IOException {
-		final long highestId = header.get(HeaderField.HIGHEST_ID);
+		final long highestId = metadataHeader.get(MetadataFields.HIGHEST_ID);
 
 		long[] idsToFind = ids;
 		// TODO: Set BULK_THRESHOLD an appropriate number.
 		if(idsToFind.length >= BULK_THRESHOLD){
 			Arrays.parallelSort(idsToFind);
 			final int k = Arrays.binarySearch(idsToFind,highestId);
+
+			// All IDs higher than the highesId are removed.
 			if (k != idsToFind.length) {
 				// If the array contains value higher than highestId.
 				// TODO: Check that the array after copyOfRange has the correct values.
 				idsToFind = Arrays.copyOfRange(idsToFind, 0, k);
 			}
+
+			// TODO: Remove duplicates
 		}
 
-		TreeMap<Long, String> entries = new TreeMap<>(
-				this.getEntries().stream()
-						.collect(Collectors.toMap(ln -> (long) Field.ID.get(ln), Function.identity()))
-		);
+		final TreeMap<Long, String> entries = this.getTreeMapOfEntries();
 
 		List<Entity> entities = new ArrayList<>();
 		for(long id : idsToFind){
@@ -353,9 +429,18 @@ public class FileDatabase implements Database {
 	}
 
 	@Override
-	public List<Entity> get(final Entity[] entities) throws IOException {
-		// Needs to mutate entries. Fill entries with their respective data.
-		return null;
+	public Entity[] get(Entity[] entities) throws IOException {
+		final TreeMap<Long, String> entries = this.getTreeMapOfEntries();
+
+		Arrays.stream(entities).parallel()
+				.forEach(entity -> {
+					final long id = entity.getId();
+					final String entry = entries.get(id);
+					entity.setUrl((String) Field.URL.get(entry));
+					entity.setTags((String[]) Field.TAGS.get(entry));
+				});
+
+		return entities;
 	}
 
 }
