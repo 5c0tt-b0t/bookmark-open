@@ -2,6 +2,8 @@ package kj.bo.options;
 
 import kj.bo.database.Database;
 
+import java.io.IOException;
+
 public class Delete extends CLIOption{
 
 	public Delete(){
@@ -18,7 +20,11 @@ public class Delete extends CLIOption{
 				System.err.println(args[k] + " not an id.");
 			}
 		}
-		db.delete(ids);
+		try {
+			db.delete(ids);
+		} catch (IOException e) {
+			System.err.println("Could not delete " + args.toString() + ". " + e.getMessage());
+		}
 	}
 
 }

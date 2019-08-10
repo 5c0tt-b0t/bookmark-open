@@ -5,6 +5,18 @@ public class Entity {
 	private String url;
 	private String[] tags;
 
+	public Entity() {
+	}
+
+	public Entity(long id) {
+		this.id = id;
+	}
+
+	public Entity(String url, String[] tags) {
+		this.url = url;
+		this.tags = tags;
+	}
+
 	public long getId() {
 		return id;
 	}

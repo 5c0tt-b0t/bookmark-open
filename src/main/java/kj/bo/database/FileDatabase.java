@@ -3,6 +3,7 @@ package kj.bo.database;
 import kj.bo.Entity;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -66,20 +67,23 @@ class MetadataHeader {
 	 * Maps each field, specified by {@link MetadataFields}, of the metadata header to its value.
 	 */
 	private EnumMap<MetadataFields, Long> map = new EnumMap<>(MetadataFields.class);
-	private static MetadataHeader singleton;
 
 	/**
-	 *
-	 * @param line Metadata header line which should be the first line in the file.
+	 * Returns a MetadataHeader object representing the metadata header string provided.
+	 * @param metadataHeader Metadata header line which should be the first line in the file.
 	 * @exception IllegalArgumentException Malformed metadata header line. It specifies more or less fields than required.
 	 */
-	private MetadataHeader(String line){
-		final String[] values = line.split(SEPARATOR);
+	protected MetadataHeader(String metadataHeader){
+		if(metadataHeader == null){
+			throw new IllegalStateException("Database file corrupted.\nNo metadata header found.");
+		}
+
+		final String[] values = metadataHeader.split(SEPARATOR);
 		final MetadataFields[] fields = MetadataFields.values();
 
 		if(values.length != fields.length)
 			throw new IllegalArgumentException("Mismatch between required and received metadata header values." +
-				"\nHeadder: " + line +
+				"\nHeadder: " + metadataHeader +
 				"\nRequired fields: " + fields.toString() +
 				"\nNote: The required field sequence shown might not be correctly ordered.");
 
@@ -88,21 +92,9 @@ class MetadataHeader {
 				.sequential()
 				.forEach( k -> map.put(fields[k], Long.parseLong(values[k])));
 	}
-
-	/**
-	 * Returns a MetadataHeader object representing the metadata header string provided.<br><br>
-	 * <p>The metadata header line should be the first line in the database file.</p>
-	 * <p><b>NOTE:</b>
-	 * Future calls to this method with different parameter
-	 * will result in the same old unchanged MetadataHeader object to be returned.</p>
-	 * @param metadata header First line in the database file.
-	 * @return Header object representing the metadata header string.
-	 * @exception IllegalArgumentException Malformed metadata header line. It specifies more or less fields than required.
-	 */
-	protected static MetadataHeader get(String metadataheader){
-		if(singleton == null) singleton = new MetadataHeader(metadataheader);
-		return singleton;
-	}
+	 protected MetadataHeader(){
+		this("0 0");
+	 }
 
 	/**
 	 * Use to update the object to maintain validity after the addition or deletion of entries.
@@ -151,9 +143,27 @@ enum Field {
 		);
 	*  The sequence in which the fields are defined should correspond to how an entry line in the file, is stored.
 	*/
-	ID   (Long.class	, Entity::getId		, Long::parseLong				, (entity, value) -> entity.setId((long) value)),
-	URL  (String.class	, Entity::getUrl	, value -> value				, (entity, value) -> entity.setUrl((String) value)),
-	TAGS (String[].class, Entity::getTags	, values -> values.split(","), (entity, value) -> entity.setTags((String[]) value));
+	ID (
+			Long.class,
+			Entity::getId,
+			(entity, value) -> entity.setId((long) value),
+			Long::parseLong,
+			String::valueOf
+	),
+	URL (
+			String.class,
+			Entity::getUrl,
+			(entity, value) -> entity.setUrl((String) value),
+			url -> url,
+			Object::toString
+	),
+	TAGS (
+			String[].class,
+			Entity::getTags,
+			(entity, value) -> entity.setTags((String[]) value),
+			values -> values.split(","),
+			values -> String.join(",", (String[]) values)
+	);
 
 	// TAG_SEPARATOR not defined as it cannot be used when the enums are being created. It causes a forward reference.
 	protected static final String SEPARATOR = " ";
@@ -162,16 +172,19 @@ enum Field {
 	private final Function<Entity, Object> getValueFromEntity;
 	private final Function<String, Object> getValueFromLine;
 	private final BiConsumer<Entity, Object> entityValueSetter;
+	private final Function<Object, String> valueToStringConverter;
 
 	Field(Class type,
 		  Function<Entity, Object> getValueFromEntity,
+		  BiConsumer<Entity, Object> entityValueSetter,
 		  Function<String, Object> stringToValueConverter,
-		  BiConsumer<Entity, Object> entityValueSetter)
+		  Function<Object, String> valueToStringConverter)
 	{
 		this.type = type;
 		this.getValueFromEntity = getValueFromEntity;
-		this.getValueFromLine = line -> stringToValueConverter.apply(line.split(SEPARATOR)[this.ordinal()]);
 		this.entityValueSetter = entityValueSetter;
+		this.getValueFromLine = line -> stringToValueConverter.apply(line.split(SEPARATOR)[this.ordinal()]);
+		this.valueToStringConverter = valueToStringConverter;
 	}
 
 	/**
@@ -210,7 +223,6 @@ enum Field {
 		return this.getValueFromLine.apply(entry);
 	}
 
-
 	/**
 	 * Set the value corresponding to a field, of an entity.
 	 * <p>This method does not allow a null value to be set.</p>
@@ -220,7 +232,7 @@ enum Field {
 	 * @exception IllegalArgumentException If the value's type is invalid for the field.<br>
 	 * 			E.g. value of type String for ID field.
 	 */
-	protected void set(Entity entity, Object value){
+	protected void set(Entity entity, Object value) {
 		if (value == null)
 			throw new NullPointerException();
 		else if (!this.type.isInstance(value))
@@ -229,6 +241,10 @@ enum Field {
 					"\nReceived an instance of " + value.getClass().toString());
 
 		this.entityValueSetter.accept(entity, value);
+	}
+
+	protected String toString(Object value){
+		return this.valueToStringConverter.apply(value);
 	}
 
 }
@@ -250,29 +266,24 @@ public class FileDatabase implements Database {
 	private final Path filePath;
 	private final MetadataHeader metadataHeader;
 
-	private static FileDatabase singleton;
-
-	private FileDatabase(String fileName) throws IOException{
+	public FileDatabase(String fileName) throws IOException{
 		this.fileName = fileName;
 		this.filePath = Paths.get(fileName);
 
-		final BufferedReader reader = new BufferedReader(new FileReader(fileName));
-		this.metadataHeader = MetadataHeader.get(reader.readLine());
-		reader.close();
-	}
+		if(Files.exists(filePath)) {
+			final BufferedReader reader = new BufferedReader(new FileReader(fileName));
+			final String metadataHeader = reader.readLine();
 
-	/**
-	 * Returns a FileDatabase object allowing interaction with a file database.<br><br>
-	 * <p><b>NOTE:</b>
-	 * Future calls to this method with different file path will return
-	 * the same old unmodified FileDatabase object.</p>
-	 * @param filePath Path to the database file.
-	 * @return FileDatabase object.
-	 * @throws IOException In case there is an error opening the file.
-	 */
-	public FileDatabase get(String filePath) throws IOException {
-		if(singleton == null) singleton = new FileDatabase(filePath);
-		return singleton;
+			// metadataHeader can be null if the file was empty.
+			if(metadataHeader == null){
+				throw new IllegalStateException("Database file: " + fileName + " corrupted.\nNo metadata header found");
+			}
+
+			this.metadataHeader = new MetadataHeader(metadataHeader);
+			reader.close();
+		} else {
+			this.metadataHeader = new MetadataHeader();
+		}
 	}
 
 	/**
@@ -286,7 +297,7 @@ public class FileDatabase implements Database {
 		// TODO: Check that Field.values() returns values in order.
 		return Arrays.stream(Field.values())
 				.sequential()
-				.map( field -> String.valueOf(field.get(entity)))
+				.map( field -> field.toString(field.get(entity)))
 				.collect(Collectors.joining(Field.SEPARATOR));
 	}
 
@@ -338,9 +349,13 @@ public class FileDatabase implements Database {
 	 * @throws IOException In case the database file cannot be read.
 	 */
 	private List<String> getEntries() throws IOException{
-		final List<String> lines =  Files.readAllLines(filePath);
-		lines.remove(0); // Remove metadata header.
-		return lines;
+		try {
+			final List<String> lines = Files.readAllLines(filePath);
+			lines.remove(0); // Remove metadata header.
+			return lines;
+		} catch (IOException e){
+			return new ArrayList<>();
+		}
 	}
 
 	private TreeMap<Long, String> getTreeMapOfEntries() throws IOException {

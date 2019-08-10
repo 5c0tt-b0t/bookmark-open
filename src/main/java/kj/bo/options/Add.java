@@ -10,7 +10,8 @@ public class Add extends CLIOption {
 
 	@Override
 	public void execute(String[] args, Database db) {
-		db.add(args);
+
+		//db.add(args);
 	}
 
 }
