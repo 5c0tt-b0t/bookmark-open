@@ -20,7 +20,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define C89
 #define APP_NAME "bookmark-open"
 
 /* The format should always be a string literal.*/
@@ -73,7 +72,7 @@
 
 /* Checks if a file is empty.		*/
 /* Return -1 if an error occurred.	*/
-const int is_empty(FILE * p_file);
+int is_empty(FILE * p_file);
 
 /* Gets a pointer to the configuration file.			*/
 /* Terminates the program is the file could not be opened.	*/
@@ -107,9 +106,9 @@ void validate_cfg_file(FILE * p_cfg_file){
 	}
 }
 
-int main(int argc, char **argv){
+int main(){
 	FILE * p_cfg_file;
-	printf_error_msg("testing: %s, %s, %s ", "one", "two", "three");
+	printf_error_msg("testing: %s, %s, %s ", "one", "two", "three"); 
 	print_usage();
 	p_cfg_file = get_cfg_file();
 	validate_cfg_file(p_cfg_file);
@@ -119,7 +118,7 @@ int main(int argc, char **argv){
 }
 
 /* Return -1 if an error occurred.*/
-const int is_empty(FILE * p_file){
+int is_empty(FILE * p_file){
 	if(fseek(p_file, 0, SEEK_END) == -1)
 		return -1;
 
