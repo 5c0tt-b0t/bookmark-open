@@ -1,6 +1,6 @@
 CC=gcc
 bookmark-open: main.c
-	@$(CC) -o2 main.c -o bookmark-open
+	@$(CC) -o2 -o bookmark-open main.c
 
 dev: main.c
 	@clear
