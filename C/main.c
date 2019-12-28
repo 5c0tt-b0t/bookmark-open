@@ -22,10 +22,13 @@
 
 #define APP_NAME "bookmark-open"
 
+/* Characters added to the _FORMAT when generating the new format.			*/
+/* Remember to change ERROR_FORMAT_EXTRA_LENGTH if GEN_ERROR_FORMAT_STR is modified.	*/
+#define ERROR_FORMAT_EXTRA_LENGTH 65
 /* The format should always be a string literal.*/
-#define GEN_FORMAT_STR(format) APP_NAME ": " format "\nTry 'bookmark-open --help' for more information.\n"
-#define print_error_msg(format) \
-	fprintf(stderr, GEN_FORMAT_STR(format));
+#define GEN_ERROR_FORMAT_STR(_FORMAT) APP_NAME ": " _FORMAT "\nTry 'bookmark-open --help' for more information.\n"
+
+#define print_error_msg(_FORMAT) fprintf(stderr, GEN_ERROR_FORMAT_STR(_FORMAT));
 
 #ifdef C89
 	/* C89 */
@@ -49,7 +52,21 @@
 		printf("%s", usage);}
 
 	/* No __VA_ARGS__. */
-	/* TODO: Writ printf_error_msg with valist*/
+	#include <stdarg.h>
+	void printf_error_msg(const char * const old_format, ...){
+		va_list args;
+		char * const format = (char *) malloc(strlen(old_format) + ERROR_FORMAT_EXTRA_LENGTH + 1);
+		if(format == NULL){
+			fprintf(stderr, "Could not allocate memory for error message.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		sprintf(format, APP_NAME ": %s\nTry 'bookmark-open --help' for more information.\n", old_format);
+		
+		va_start(args, old_format);
+		vprintf(format, args);
+		va_end(args);
+	}
 #else
 	#define print_usage() printf(									\
 			"Usage: " APP_NAME " [-adDlo]\n" 						\
@@ -66,7 +83,7 @@
 			"\nIf no arguments are specified the default behaviour is as -O.\n")
 
 	#define printf_error_msg(format, ...) \
-		fprintf(stderr, GEN_FORMAT_STR(format), __VA_ARGS__);
+		fprintf(stderr, GEN_ERROR_FORMAT_STR(format), __VA_ARGS__);
 #endif
 
 
@@ -108,8 +125,6 @@ void validate_cfg_file(FILE * p_cfg_file){
 
 int main(){
 	FILE * p_cfg_file;
-	printf_error_msg("testing: %s, %s, %s ", "one", "two", "three"); 
-	print_usage();
 	p_cfg_file = get_cfg_file();
 	validate_cfg_file(p_cfg_file);
 	
