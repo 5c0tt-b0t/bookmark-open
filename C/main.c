@@ -123,8 +123,27 @@ void validate_cfg_file(FILE * p_cfg_file){
 	}
 }
 
-int main(){
+int main(int argc, char ** argv){
 	FILE * p_cfg_file;
+	char ** arg = argv;
+
+	while(*arg != NULL){
+		if(strcmp(*arg, "--init") == 0){
+			if(*(arg + 1) != NULL && strcmp(*(arg + 1), "--help")){
+				/*TODO init help*/
+				printf("--init help.\n");
+			} else{
+				/* TODO init code*/
+				printf("--init code.\n");
+			}
+			exit(EXIT_SUCCESS);
+		} else if(strcmp(*arg, "--help") == 0){
+			print_usage();
+			exit(EXIT_SUCCESS);
+		}
+		arg++;
+	}
+
 	p_cfg_file = get_cfg_file();
 	validate_cfg_file(p_cfg_file);
 	
