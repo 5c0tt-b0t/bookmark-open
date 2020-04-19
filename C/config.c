@@ -11,7 +11,8 @@ FILE * get_cfg_file(void){
 
 	/* e.g. HOME = /home/user, APP_NAME = app	*/
 	/* FILE=/home/user/.config/app/config		*/
-	/* /.config/ = 9, /config = 7, \0 = 1		*/
+
+	/* 16 Added at the end because /.config/ = 9, /config = 7, \0 = 1		*/
 	char * const cfg_file_path = (char *) malloc(strlen(home)  +   strlen(APP_NAME) + 16);
 	sprintf(cfg_file_path, "%s/.config/%s/config", home, APP_NAME);
 	
