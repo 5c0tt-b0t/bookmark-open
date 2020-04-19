@@ -71,7 +71,7 @@ void list_destruct(list_t ** list){
 
 }
 
-const char * list_append(list_t * const list_ptr, const char * const element, const int length){
+const char * list_push(list_t * const list_ptr, const char * const element, const int length){
 	char *new_element_ptr;
 	list_block *block_ptr, *new_block_ptr;
 	unsigned int *next_free_index_ptr;
@@ -84,13 +84,11 @@ const char * list_append(list_t * const list_ptr, const char * const element, co
 
 	block_ptr = list_ptr -> ending_block;
 	if(block_ptr == NULL){
-		printf("CREATED BLOCK\n");
 		/* Array list empty. */
 		new_block_ptr = list_block_construct();
 		list_ptr -> beginning_block = new_block_ptr;
 		list_ptr -> ending_block = new_block_ptr;
 	} else if(block_ptr -> next_free_index == ARRAY_BLOCK_SIZE){
-		printf("HERE\n");
 		new_block_ptr = list_block_construct();
 		list_ptr -> ending_block = new_block_ptr;
 		block_ptr -> next_block = new_block_ptr ;
@@ -105,7 +103,53 @@ const char * list_append(list_t * const list_ptr, const char * const element, co
 	return element;
 }
 
+const char * list_pop(list_t * const list_ptr, char ** const dest){
+	list_block * block_ptr = NULL;
+	list_block * last_block = list_ptr -> ending_block;
+	const unsigned int next_free_index = last_block -> next_free_index;
 
+	assert(list_ptr != NULL);
+
+	assert(last_block != NULL && "Error: Trying to remove element from empty list.");
+	if(last_block == NULL){
+		return NULL;
+	}
+
+
+	if(next_free_index == 1u || next_free_index == 0u){
+		/* 0 - SHOULD NOT OCCUR	- Empty block. Remove last item in 2nd last block. */
+		/* 1 - CAN OCCUR	- 1 item in block. Remove first item in last block.*/
+		/* 0 | 1		- In both cases delete last block.		   */
+
+		/* Traverse until second last block. */
+		block_ptr = list_ptr -> beginning_block;
+		while(block_ptr -> next_block != last_block){
+			block_ptr = block_ptr -> next_block;
+		}
+
+		/* Unlink */
+		block_ptr -> next_block = NULL;
+		list_ptr -> ending_block = block_ptr;
+
+		if(next_free_index == 0u){
+			*(dest) = (block_ptr -> strings)[ARRAY_BLOCK_SIZE - 1];
+			(block_ptr -> next_free_index)--;
+		} else {
+			/* next_free_index == 1 */
+			*dest = (last_block -> strings)[next_free_index - 1];
+			(last_block -> strings)[0u] = NULL;
+		}
+
+		free(last_block);
+		last_block = NULL;
+	} else {
+		*dest = (last_block -> strings)[next_free_index - 1];
+		(last_block -> strings)[next_free_index - 1] = NULL;
+		(last_block -> next_free_index)--;
+	}
+
+	return *(dest);
+}
 
 void list_print(const list_t * const list){
 	unsigned int block_number, index;
@@ -130,33 +174,49 @@ void list_print(const list_t * const list){
 }
 
 int main(){
-	char * txt0 = "Hello World 0 --------";
-	char * txt1 = "Hello World 1 ------";
-	char * txt2 = "Hello World 2 ----";
-	char * txt3 = "Hello World 3 --";
-	char * txt4 = "Hello World 4 ";
+	char * txt0 = "1";
+	char * txt1 = "2";
+	char * txt2 = "3";
+	char * txt3 = "4";
+	char * txt4 = "5";
 
-	char * txt5 = "Hello World 0 --------";
-	char * txt6 = "Hello World 1 ------";
-	char * txt7 = "Hello World 2 ----";
-	char * txt8 = "Hello World 3 --";
-	char * txt9 = "Hello World 4 ";
+	char * txt5 = "6";
+	char * txt6 = "7";
+	char * txt7 = "8";
+	char * txt8 = "9";
+	char * txt9 = "10";
 
-	char * breaker = "HELLOOOOOO WORLD !! From the depths of Hell.";
+	char * breaker = "Break.";
+
+	char * dest0 = "X";
+	char * dest1 = "X";
 
 	list_t * list = list_construct();
-	list_append(list, txt0, strlen(txt0));
-	list_append(list, txt1, strlen(txt1));
-	list_append(list, txt2, strlen(txt2));
-	list_append(list, txt3, strlen(txt3));
-	list_append(list, txt4, strlen(txt4));
-	list_append(list, txt5, strlen(txt5));
-	list_append(list, txt6, strlen(txt6));
-	list_append(list, txt7, strlen(txt7));
-	list_append(list, txt8, strlen(txt8));
-	list_append(list, txt9, strlen(txt9));
+	list_push(list, txt0, strlen(txt0));
+	list_push(list, txt1, strlen(txt1));
+	list_push(list, txt2, strlen(txt2));
+	list_push(list, txt3, strlen(txt3));
+	list_push(list, txt4, strlen(txt4));
+	list_push(list, txt5, strlen(txt5));
+	list_push(list, txt6, strlen(txt6));
+	list_push(list, txt7, strlen(txt7));
+	list_push(list, txt8, strlen(txt8));
+	list_push(list, txt9, strlen(txt9));
 
-	list_append(list, breaker, strlen(breaker));
+	list_push(list, breaker, strlen(breaker));
+
+	list_print(list);
+
+	list_pop(list, &dest0);
+
+	printf("\nPopped item : \"%s\"\n", dest0);
+
+	list_print(list);
+
+	list_pop(list, &dest1);
+
+	printf("\nPopped item : \"%s\"\n", dest1);
+
 	list_print(list);
 
 	list_destruct(&list);
