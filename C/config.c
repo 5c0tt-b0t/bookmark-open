@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "util.c"
+#include "util.h"
 
 /* Gets a pointer to the configuration file.			*/
 /* Terminates the program is the file could not be opened.	*/
