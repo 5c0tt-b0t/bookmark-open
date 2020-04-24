@@ -2,7 +2,8 @@ CC=gcc
 CFLAGS=-Wall -Wextra -pedantic
 C89=-std=c89
 
-bookmark-open: main.c config-scanner.c
+bookmark-open: main.c bo_config/config-scanner.c bo_config/
+	#$(CC) -o2 bo_config/config-scanner.c bo_config/config-parser.c
 	@$(CC) -o2 -o bookmark-open main.c
 
 dev: main.c
@@ -10,6 +11,6 @@ dev: main.c
 	@echo "C89"
 	@$(CC) $(CFLAGS) $(C89) main.c -D C89
 
-dev-scanner: config-scanner.lex
-	@echo "Generating scanners with lex." && lex -o config-scanner.c config-scanner.lex
-	@$(CC) $(CFLAGS) $(C89) config-scanner.c
+scanner-generate: bo_config/config-scanner.lex
+	@echo "Generating scanners with lex." &&\
+	 	lex -o bo_config/config-scanner.c bo_config/config-scanner.lex

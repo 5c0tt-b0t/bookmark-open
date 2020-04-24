@@ -1,6 +1,6 @@
-#line 2 "config-scanner.c"
+#line 2 "bo_config/config-scanner.c"
 
-#line 4 "config-scanner.c"
+#line 4 "bo_config/config-scanner.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -464,14 +464,35 @@ int yy_flex_debug = 0;
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *yytext;
-#line 1 "config-scanner.lex"
+#line 1 "bo_config/config-scanner.lex"
 
-#line 4 "config-scanner.lex"
-#include "config-grammer.h"
+#line 4 "bo_config/config-scanner.lex"
+#include "config-scanner.h"
 
-#define YY_DECL token_t yylex()
-#line 474 "config-scanner.c"
-#line 475 "config-scanner.c"
+struct token_struct{
+	TOKEN_TYPE type;
+	char * content;
+};
+
+#define YY_DECL struct token_struct yylex()
+
+static int line = 1, column = 1;
+#define YY_USER_ACTION column += yyleng;
+
+TOKEN_TYPE get_token_type(struct token_struct * token){
+	return token -> type;
+}
+
+char * get_token_content(struct token_struct * token){
+	return token -> content;
+}
+
+static struct token_struct token_construct(TOKEN_TYPE type, char * content, int length);
+
+static void token_destruct(token_t * token);
+
+#line 495 "bo_config/config-scanner.c"
+#line 496 "bo_config/config-scanner.c"
 
 #define INITIAL 0
 #define str 1
@@ -689,13 +710,13 @@ YY_DECL
 		}
 
 	{
-#line 14 "config-scanner.lex"
+#line 35 "bo_config/config-scanner.lex"
 
 
-#line 17 "config-scanner.lex"
+#line 38 "bo_config/config-scanner.lex"
 #define BO_CFG_TOKEN(X) token_construct((X), NULL, 0)
-#define BO_CFG_TOKEN_2(X,Y) token_construct((X), (Y), strlen(Y))
-#define BO_CFG_TOKEN_3(X,Y) token_construct((X), (Y), strlen(Y) - 1)
+#define BO_CFG_TOKEN_2(X) token_construct((X), yytext, yyleng)
+#define BO_CFG_TOKEN_3(X) token_construct((X), yytext, (yyleng) - 1)
 
 /* Taken from the fles manual: Start Constitons around 74%. */
 char string_buf[150];
@@ -703,7 +724,7 @@ char *string_buf_ptr;
 
 
 
-#line 707 "config-scanner.c"
+#line 728 "bo_config/config-scanner.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -762,85 +783,99 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 27 "config-scanner.lex"
+#line 48 "bo_config/config-scanner.lex"
 { /* Remove white space. */ }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 29 "config-scanner.lex"
-return BO_CFG_TOKEN_2(INT_LITERAL, yytext);
+#line 50 "bo_config/config-scanner.lex"
+return BO_CFG_TOKEN_2(INT_LITERAL);
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 30 "config-scanner.lex"
-return BO_CFG_TOKEN_2(PATH_LITERAL, yytext);
+#line 51 "bo_config/config-scanner.lex"
+return BO_CFG_TOKEN_2(PATH_LITERAL);
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 31 "config-scanner.lex"
-return BO_CFG_TOKEN_2(KEYWORD, yytext);
+#line 52 "bo_config/config-scanner.lex"
+return BO_CFG_TOKEN_2(KEYWORD);
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 34 "config-scanner.lex"
+#line 55 "bo_config/config-scanner.lex"
 string_buf_ptr = string_buf; BEGIN(str);
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 35 "config-scanner.lex"
+#line 56 "bo_config/config-scanner.lex"
 {
 					BEGIN(INITIAL);
 					*string_buf_ptr = '\0';
-					return BO_CFG_TOKEN_3(PATH_LITERAL, yytext);
+					return BO_CFG_TOKEN_3(PATH_LITERAL);
 					}
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 40 "config-scanner.lex"
+#line 61 "bo_config/config-scanner.lex"
 {
 					BEGIN(INITIAL);
 					*string_buf_ptr = '\0';
-					return BO_CFG_TOKEN_3(STRING_LITERAL, yytext);
+					return BO_CFG_TOKEN_3(STRING_LITERAL);
 					}
 	YY_BREAK
 case 8:
 /* rule 8 can match eol */
 YY_RULE_SETUP
-#line 45 "config-scanner.lex"
-return BO_CFG_TOKEN(ERROR);
+#line 66 "bo_config/config-scanner.lex"
+{
+					line++; column = 1;
+					fprintf(stderr,
+						"Scanning error: (%d:%d)"
+						" unterminated string.\n",
+						line, column
+						);
+					return BO_CFG_TOKEN(ERROR);
+					}
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 47 "config-scanner.lex"
+#line 76 "bo_config/config-scanner.lex"
 return BO_CFG_TOKEN(EQUALS);
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 48 "config-scanner.lex"
+#line 77 "bo_config/config-scanner.lex"
 return BO_CFG_TOKEN(SPACE);
 	YY_BREAK
 case 11:
 /* rule 11 can match eol */
 YY_RULE_SETUP
-#line 49 "config-scanner.lex"
-return BO_CFG_TOKEN(END_OF_LINE);
+#line 78 "bo_config/config-scanner.lex"
+line++; column = 1; return BO_CFG_TOKEN(END_OF_LINE);
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 50 "config-scanner.lex"
-return BO_CFG_TOKEN(ERROR);
+#line 79 "bo_config/config-scanner.lex"
+{
+					fprintf(stderr,
+						"Scanning error: (%d:%d) %s\n",
+						line, column, yytext
+						);
+					return BO_CFG_TOKEN(ERROR);
+					}
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(str):
-#line 51 "config-scanner.lex"
+#line 86 "bo_config/config-scanner.lex"
 return BO_CFG_TOKEN(END_OF_FILE);
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 53 "config-scanner.lex"
+#line 88 "bo_config/config-scanner.lex"
 ECHO;
 	YY_BREAK
-#line 844 "config-scanner.c"
+#line 879 "bo_config/config-scanner.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1843,21 +1878,62 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 53 "config-scanner.lex"
+#line 88 "bo_config/config-scanner.lex"
 
 
 #undef BO_CFG_TOKEN
 #undef BO_CFG_TOKEN_2
 #undef BO_CFG_TOKEN_3
 
-int main(){
-	token_t token;
-	yyin = stdin;
+struct token_struct * token_malloc(){
+	struct token_struct *token=(struct token_struct *) malloc(sizeof(struct token_struct));
+	return token;
+}
 
-	while((token = yylex()).type != END_OF_FILE){
-		printf("Token: %d - %s\n", token.type, token.content);
+void token_free(struct token_struct * token){
+	token_destruct(token);
+}
+
+static struct token_struct token_construct(TOKEN_TYPE type, char * content, int length){
+	token_t token;
+
+	if(type < 0 || type > TOKEN_TYPES || type == INVALID_TOKEN){
+		/* Not a valid token. */
+		token.type = INVALID_TOKEN;
+		return token;
 	}
 
-	return 0;
+	token.type = type;
+	if(content != NULL && length > 0){
+		token.content = (char *) malloc(sizeof(char) * length);
+		strncpy(token.content, content, length);
+	} else {
+		token.content = NULL;
+	}
+
+	return token;
+}
+
+static void token_destruct(struct token_struct * token){
+	token -> type = INVALID_TOKEN;
+	if(token -> content != NULL){
+		free(token -> content);
+		token -> content = NULL;
+	}
+}
+
+
+struct token_struct * get_next_token(){
+	static struct token_struct token = {INITIAL_TOKEN, NULL};
+	yyin = stdin;
+
+	if(token.type == END_OF_FILE){
+		return &token;
+	}
+
+	token_destruct(&token);
+	token = yylex();
+
+	return &token;
 }
 
