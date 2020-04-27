@@ -1,5 +1,5 @@
-#ifndef CONFIG_GRAMMER
-#define CONFIG_GRAMMER
+#ifndef BO_CONFIG_TOKEN
+#define BO_CONFIG_TOKEN
 
 /*
 Grammar:
@@ -8,6 +8,8 @@ Grammar:
 	PROGRAM		-> STATEMENT_LIST END_OF_FILE
 	STATEMENT_LIST	-> STATEMENT {STATEMENT}
 	STATEMENT	-> KEYWORD ASSIGN_OP LITERAL END_OF_LINE
+	KEYWORD		-> DB
+	KEYWORD		-> URL_OPEN_CMD
 	ASSIGN_OP	-> EQUALS
 	ASSIGN_OP	-> SPACE
 	LITERAL		-> INT_LITERAL
@@ -18,7 +20,8 @@ Grammar:
 typedef enum {
 	END_OF_FILE,
 	ERROR,
-	KEYWORD,
+	DB,
+	URL_OPEN_CMD,
 	INT_LITERAL,
 	STRING_LITERAL,
 	PATH_LITERAL,
@@ -38,7 +41,7 @@ token_t * token_malloc();
 
 void token_free(token_t * token);
 
-token_t * get_next_token();
+token_t * token_duplicate(const token_t * const token);
 
 TOKEN_TYPE get_token_type(token_t * token);
 

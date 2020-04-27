@@ -1,7 +1,9 @@
 %option noyywrap
 %x str
 %{
-#include "config-scanner.h"
+#include <assert.h>
+#include <bo_config/tokens.h>
+#include <bo_config/scanner.h>
 
 struct token_struct{
 	TOKEN_TYPE type;
@@ -48,7 +50,8 @@ char *string_buf_ptr;
 
 {DIGIT}+				return BO_CFG_TOKEN_2(INT_LITERAL);
 {PATH}					return BO_CFG_TOKEN_2(PATH_LITERAL);
-{U_CASE_LETTER}{2,}(_{U_CASE_LETTER}+)*	return BO_CFG_TOKEN_2(KEYWORD);
+DB					return BO_CFG_TOKEN(DB);
+URL_OPEN_CMD				return BO_CFG_TOKEN(URL_OPEN_CMD);
 
 
 \"					string_buf_ptr = string_buf; BEGIN(str);
@@ -99,10 +102,30 @@ void token_free(struct token_struct * token){
 	token_destruct(token);
 }
 
+struct token_struct * token_duplicate(const struct token_struct * const token){
+	struct token_struct * dup_token = NULL;
+
+	if(token == NULL){
+		return NULL;
+	}
+
+	dup_token = token_malloc();
+
+	if(token -> content != NULL){
+		*dup_token = token_construct(token -> type,
+						token -> content,
+						strlen(token -> content));
+	} else {
+		*dup_token = token_construct(token -> type, NULL, 0);
+	}
+
+	return dup_token;
+}
+
 static struct token_struct token_construct(TOKEN_TYPE type, char * content, int length){
 	token_t token;
 
-	if(type < 0 || type > TOKEN_TYPES || type == INVALID_TOKEN){
+	if(type < 0 || type > TOKEN_TYPES){
 		/* Not a valid token. */
 		token.type = INVALID_TOKEN;
 		return token;
@@ -127,10 +150,14 @@ static void token_destruct(struct token_struct * token){
 	}
 }
 
+void set_scanner_input(FILE* file){
+	yyin = file;
+}
 
 struct token_struct * get_next_token(){
 	static struct token_struct token = {INITIAL_TOKEN, NULL};
-	yyin = stdin;
+
+	assert(yyin != NULL && "Scanner input file not set.");
 
 	if(token.type == END_OF_FILE){
 		return &token;
@@ -140,4 +167,8 @@ struct token_struct * get_next_token(){
 	token = yylex();
 
 	return &token;
+}
+
+void scanner_restart(FILE* new_file){
+	yyrestart(new_file);
 }
