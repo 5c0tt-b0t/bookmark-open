@@ -1,4 +1,6 @@
 %option noyywrap
+%option noinput
+%option nounput
 %x str
 %{
 #include <assert.h>

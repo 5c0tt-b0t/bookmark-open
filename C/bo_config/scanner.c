@@ -1,6 +1,6 @@
-#line 2 "scanner.c"
+#line 2 "bo_config/scanner.c"
 
-#line 4 "scanner.c"
+#line 4 "bo_config/scanner.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -492,9 +492,11 @@ int yy_flex_debug = 0;
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *yytext;
-#line 1 "scanner.lex"
+#line 1 "bo_config/scanner.lex"
+#define YY_NO_INPUT 1
 
-#line 4 "scanner.lex"
+#line 6 "bo_config/scanner.lex"
+#include <stdio.h>
 #include <assert.h>
 #include <bo_config/tokens.h>
 #include <bo_config/scanner.h>
@@ -521,8 +523,8 @@ static struct token_struct token_construct(TOKEN_TYPE type, char * content, int 
 
 static void token_destruct(token_t * token);
 
-#line 525 "scanner.c"
-#line 526 "scanner.c"
+#line 527 "bo_config/scanner.c"
+#line 528 "bo_config/scanner.c"
 
 #define INITIAL 0
 #define str 1
@@ -583,8 +585,6 @@ extern int yywrap ( void );
 #endif
 
 #ifndef YY_NO_UNPUT
-    
-    static void yyunput ( int c, char *buf_ptr  );
     
 #endif
 
@@ -740,10 +740,10 @@ YY_DECL
 		}
 
 	{
-#line 37 "scanner.lex"
+#line 40 "bo_config/scanner.lex"
 
 
-#line 40 "scanner.lex"
+#line 43 "bo_config/scanner.lex"
 #define BO_CFG_TOKEN(X) token_construct((X), NULL, 0)
 #define BO_CFG_TOKEN_2(X) token_construct((X), yytext, yyleng)
 #define BO_CFG_TOKEN_3(X) token_construct((X), yytext, (yyleng) - 1)
@@ -754,7 +754,7 @@ char *string_buf_ptr;
 
 
 
-#line 758 "scanner.c"
+#line 758 "bo_config/scanner.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -813,37 +813,37 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 50 "scanner.lex"
+#line 53 "bo_config/scanner.lex"
 { /* Remove white space. */ }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 52 "scanner.lex"
+#line 55 "bo_config/scanner.lex"
 return BO_CFG_TOKEN_2(INT_LITERAL);
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 53 "scanner.lex"
+#line 56 "bo_config/scanner.lex"
 return BO_CFG_TOKEN_2(PATH_LITERAL);
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 54 "scanner.lex"
+#line 57 "bo_config/scanner.lex"
 return BO_CFG_TOKEN(DB);
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 55 "scanner.lex"
+#line 58 "bo_config/scanner.lex"
 return BO_CFG_TOKEN(URL_OPEN_CMD);
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 58 "scanner.lex"
+#line 61 "bo_config/scanner.lex"
 string_buf_ptr = string_buf; BEGIN(str);
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 59 "scanner.lex"
+#line 62 "bo_config/scanner.lex"
 {
 					BEGIN(INITIAL);
 					*string_buf_ptr = '\0';
@@ -852,7 +852,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 64 "scanner.lex"
+#line 67 "bo_config/scanner.lex"
 {
 					BEGIN(INITIAL);
 					*string_buf_ptr = '\0';
@@ -862,7 +862,7 @@ YY_RULE_SETUP
 case 9:
 /* rule 9 can match eol */
 YY_RULE_SETUP
-#line 69 "scanner.lex"
+#line 72 "bo_config/scanner.lex"
 {
 					line++; column = 1;
 					fprintf(stderr,
@@ -875,23 +875,23 @@ YY_RULE_SETUP
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 79 "scanner.lex"
+#line 82 "bo_config/scanner.lex"
 return BO_CFG_TOKEN(EQUALS);
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 80 "scanner.lex"
+#line 83 "bo_config/scanner.lex"
 return BO_CFG_TOKEN(SPACE);
 	YY_BREAK
 case 12:
 /* rule 12 can match eol */
 YY_RULE_SETUP
-#line 81 "scanner.lex"
+#line 84 "bo_config/scanner.lex"
 line++; column = 1; return BO_CFG_TOKEN(END_OF_LINE);
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 82 "scanner.lex"
+#line 85 "bo_config/scanner.lex"
 {
 					fprintf(stderr,
 						"Scanning error: (%d:%d) %s\n",
@@ -902,15 +902,15 @@ YY_RULE_SETUP
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(str):
-#line 89 "scanner.lex"
+#line 92 "bo_config/scanner.lex"
 return BO_CFG_TOKEN(END_OF_FILE);
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 91 "scanner.lex"
+#line 94 "bo_config/scanner.lex"
 ECHO;
 	YY_BREAK
-#line 914 "scanner.c"
+#line 914 "bo_config/scanner.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1243,43 +1243,6 @@ static int yy_get_next_buffer (void)
 }
 
 #ifndef YY_NO_UNPUT
-
-    static void yyunput (int c, char * yy_bp )
-{
-	char *yy_cp;
-    
-    yy_cp = (yy_c_buf_p);
-
-	/* undo effects of setting up yytext */
-	*yy_cp = (yy_hold_char);
-
-	if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-		{ /* need to shift things up to make room */
-		/* +2 for EOB chars. */
-		int number_to_move = (yy_n_chars) + 2;
-		char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
-					YY_CURRENT_BUFFER_LVALUE->yy_buf_size + 2];
-		char *source =
-				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move];
-
-		while ( source > YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
-			*--dest = *--source;
-
-		yy_cp += (int) (dest - source);
-		yy_bp += (int) (dest - source);
-		YY_CURRENT_BUFFER_LVALUE->yy_n_chars =
-			(yy_n_chars) = (int) YY_CURRENT_BUFFER_LVALUE->yy_buf_size;
-
-		if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-			YY_FATAL_ERROR( "flex scanner push-back overflow" );
-		}
-
-	*--yy_cp = (char) c;
-
-	(yytext_ptr) = yy_bp;
-	(yy_hold_char) = *yy_cp;
-	(yy_c_buf_p) = yy_cp;
-}
 
 #endif
 
@@ -1913,7 +1876,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 91 "scanner.lex"
+#line 94 "bo_config/scanner.lex"
 
 
 #undef BO_CFG_TOKEN

@@ -91,9 +91,25 @@
 #endif
 
 /* Opens and returns the configuration file's descriptor.	*/
+/* By default: /home/<user>/.config/<PP_NAME>/config		*/
 /* Remember to close the file.					*/
 /* Returns NULL if the file could not be opened.		*/
-FILE * get_config_file(void);
+FILE * get_config_file(void){
+	FILE * p_cfg_file;
+	const char * const home = getenv("HOME");
+
+	/* e.g. HOME = /home/user, APP_NAME = app	*/
+	/* FILE=/home/user/.config/app/config		*/
+
+	/* 16 Added at the end because /.config/ = 9, /config = 7, \0 = 1	*/
+	char * const cfg_file_path = (char *) malloc(strlen(home)  +   strlen(APP_NAME) + 16);
+	sprintf(cfg_file_path, "%s/.config/%s/config", home, APP_NAME);
+
+	p_cfg_file = fopen(cfg_file_path, "r");
+	free((void *) cfg_file_path);
+
+	return p_cfg_file;
+}
 
 int main(int argc, char ** argv){
 	FILE * p_cfg_file;
@@ -137,22 +153,3 @@ int main(int argc, char ** argv){
 	exit(EXIT_SUCCESS);
 }
 
-/* Opens and returns the configuration file's descriptor.	*/
-/* Remember to close the file.					*/
-/* Returns NULL if the file could not be opened.		*/
-FILE * get_config_file(void){
-	FILE * p_cfg_file;
-	const char * const home = getenv("HOME");
-
-	/* e.g. HOME = /home/user, APP_NAME = app	*/
-	/* FILE=/home/user/.config/app/config		*/
-
-	/* 16 Added at the end because /.config/ = 9, /config = 7, \0 = 1	*/
-	char * const cfg_file_path = (char *) malloc(strlen(home)  +   strlen(APP_NAME) + 16);
-	sprintf(cfg_file_path, "%s/.config/%s/config", home, APP_NAME);
-	
-	p_cfg_file = fopen(cfg_file_path, "r");
-	free((void *) cfg_file_path);
-
-	return p_cfg_file;
-}
