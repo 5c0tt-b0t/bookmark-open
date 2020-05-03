@@ -45,17 +45,6 @@ static void keyword();
 static void assign_op();
 static void literal();
 
-int main(){
-	context_t* context = context_malloc();
-
-	load_context(context, stdin);
-
-	printf("DB: %s\nURL_OPEN_CMD: %s\n", get_db(context), get_url_open_cmd(context));
-
-	context_free(context);
-	return 0;
-}
-
 static context_t * context_ptr = NULL;
 
 static stack_t * semantic_stack_ptr = NULL;
